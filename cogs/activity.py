@@ -283,7 +283,7 @@ class Activity(commands.Cog):
 
         return chart_id
 
-    @commands.command(name="trend")
+    @commands.command(name="trend", aliases=["trendbeta"])
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     async def trend(self, ctx: commands.Context, *, terme: str):
