@@ -361,9 +361,7 @@ class Activity(commands.Cog):
                 terme = custom_emoji_str
 
             title_lines = textwrap.wrap(f"Tendances de <b>'{terme}'</b>")
-            title_lines.append(
-                f"<i style='font-size: 10px'>Sur {guild_name}. Plus d'informations sur kutt.it/abeille</i>"
-            )
+            title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
             title = "<br>".join(title_lines)
             fig: go.Figure = px.area(
                 df,
