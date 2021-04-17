@@ -64,7 +64,7 @@ class Activity(commands.Cog):
 
         # Si les deux mêmes, faire un _trend
         if terme1 == terme2:
-            return await self._trend(ctx, guild_id, terme1)
+            return await self._trenddw(ctx, guild_id, terme1)
 
         temp_msg: discord.Message = await ctx.send(
             f"Je génère les tendances comparées de **{terme1}** et **{terme2}**... 🐝"
@@ -146,22 +146,22 @@ class Activity(commands.Cog):
 
         await temp_msg.delete()
 
-    @commands.command(name="trend", aliases=["trends", "tendance", "tendances"])
+    @commands.command(name="trenddw")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
-    async def trend(self, ctx: commands.Context, *, terme: str):
+    async def trenddw(self, ctx: commands.Context, *, terme: str):
         assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._trend(ctx, ctx.guild.id, terme)
+        await self._trenddw(ctx, ctx.guild.id, terme)
 
-    @commands.command(name="trendid")
+    @commands.command(name="trenddwid")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     @commands.is_owner()
-    async def trend_debug(self, ctx: commands.Context, guild_id: int, *, terme: str):
-        await self._trend(ctx, guild_id, terme)
+    async def trenddw_debug(self, ctx: commands.Context, guild_id: int, *, terme: str):
+        await self._trenddw(ctx, guild_id, terme)
 
-    async def _trend(self, ctx: commands.Context, guild_id: int, terme: str):
-        """ Trend des X derniers jours """
+    async def _trenddw(self, ctx: commands.Context, guild_id: int, terme: str):
+        """ Trend using Datawrapper """
         if not str_input_ok(terme):
             await ctx.send("Je ne peux pas faire de tendance avec une expression vide.")
             return
@@ -283,22 +283,22 @@ class Activity(commands.Cog):
 
         return chart_id
 
-    @commands.command(name="trendbeta")
+    @commands.command(name="trend")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
-    async def trendbeta(self, ctx: commands.Context, *, terme: str):
+    async def trend(self, ctx: commands.Context, *, terme: str):
         assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._trend_beta(ctx, ctx.guild.id, terme)
+        await self._trend(ctx, ctx.guild.id, terme)
 
-    @commands.command(name="trendbetaid")
+    @commands.command(name="trendid")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     @commands.is_owner()
-    async def trendbeta_id(self, ctx: commands.Context, guild_id: int, *, terme: str):
-        await self._trend_beta(ctx, guild_id, terme)
+    async def trend_id(self, ctx: commands.Context, guild_id: int, *, terme: str):
+        await self._trend(ctx, guild_id, terme)
 
-    async def _trend_beta(self, ctx: commands.Context, guild_id: int, terme: str):
-        """ Trend des X derniers jours """
+    async def _trend(self, ctx: commands.Context, guild_id: int, terme: str):
+        """ Trending last X days """
         assert isinstance(
             ctx.author, discord.Member
         ), "Avez-vous exécuté la commande depuis un salon ?"
