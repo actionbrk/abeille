@@ -489,11 +489,19 @@ class Activity(commands.Cog):
                 color_discrete_sequence=["yellow", "#4585e6"],
                 template="plotly_dark",
                 title=title,
-                render_mode="svg"
+                render_mode="svg",
+                labels={"date": "", "variable": ""},
             )
 
             # Hide y-axis
             fig.update_yaxes(visible=False, fixedrange=True)
+
+            # Legend position
+            fig.update_layout(
+                legend=dict(
+                    title=None, orientation="h", y=1, yanchor="bottom", x=0.5, xanchor="center"
+                )
+            )
 
             fig.add_layout_image(
                 dict(
