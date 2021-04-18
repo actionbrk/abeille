@@ -36,25 +36,25 @@ class Activity(commands.Cog):
         self.bot = bot
         self.dw = Datawrapper(access_token=token)  # pylint: disable=invalid-name
 
-    @commands.command(name="vs", aliases=["compare"])
+    @commands.command(name="vsdw", aliases=["comparedw"])
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
-    async def compare(self, ctx: commands.Context, terme1: str, terme2: str):
-        """ Compare deux tendances """
+    async def comparedw(self, ctx: commands.Context, terme1: str, terme2: str):
+        """ Compare trends with Datawrapper """
         assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._compare(ctx, ctx.guild.id, terme1, terme2)
+        await self._comparedw(ctx, ctx.guild.id, terme1, terme2)
 
-    @commands.command(name="vsid", aliases=["compareid"])
+    @commands.command(name="vsdwid", aliases=["comparedwid"])
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     @commands.is_owner()
-    async def compare_id(
+    async def comparedw_id(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
         """ Compare deux tendances """
         await self._compare(ctx, guild_id, terme1, terme2)
 
-    async def _compare(
+    async def _comparedw(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
         """ Compare deux tendances """
