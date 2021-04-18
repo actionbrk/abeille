@@ -1,0 +1,4 @@
+pandas==1.2.3
+plotly==4.14.3
+peewee==3.14.4
+datawrapper==0.4.5
