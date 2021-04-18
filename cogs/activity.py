@@ -302,11 +302,6 @@ class Activity(commands.Cog):
         assert isinstance(
             ctx.author, discord.Member
         ), "Avez-vous exécuté la commande depuis un salon ?"
-        if not await self.bot.is_owner(ctx.author) and not ctx.author.premium_since:
-            await ctx.reply(
-                "Cette fonctionnalité est pour l'instant réservée aux membres ayant boostés le serveur 🐝"
-            )
-            return
 
         if not str_input_ok(terme):
             await ctx.reply(
@@ -388,7 +383,134 @@ class Activity(commands.Cog):
                 )
             )
 
-            img = fig.to_image(format="png")
+            img = fig.to_image(format="png", scale=2)
+
+            # Envoyer image
+            await temp_msg.delete()
+            await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
+
+    @commands.command(name="vsbeta")
+    @commands.max_concurrency(1, wait=True)
+    @commands.guild_only()
+    async def comparebeta(self, ctx: commands.Context, terme1: str, terme2: str):
+        """ Compare deux tendances """
+        assert ctx.guild is not None, "Impossible de récupérer la guild"
+        await self._comparebeta(ctx, ctx.guild.id, terme1, terme2)
+
+    @commands.command(name="vsbetaid")
+    @commands.max_concurrency(1, wait=True)
+    @commands.guild_only()
+    @commands.is_owner()
+    async def comparebeta_id(
+        self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
+    ):
+        """ Compare deux tendances """
+        await self._comparebeta(ctx, guild_id, terme1, terme2)
+
+    async def _comparebeta(self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str):
+        """ Trend comparison """
+        assert isinstance(
+            ctx.author, discord.Member
+        ), "Avez-vous exécuté la commande depuis un salon ?"
+
+        if False in (str_input_ok(terme1), str_input_ok(terme2)):
+            await ctx.send("Je ne peux pas faire de tendance avec une expression vide.")
+            return
+
+        # Si les deux mêmes, faire un _trend
+        if terme1 == terme2:
+            return await self._trend(ctx, guild_id, terme1)
+
+        temp_msg: discord.Message = await ctx.send(
+            f"Je génère les tendances comparées de **{terme1}** et **{terme2}**... 🐝"
+        )
+
+        async with ctx.typing():
+            jour_debut = date.today() - timedelta(days=PERIODE)
+            jour_fin = date.today() - timedelta(days=1)
+            tracking_cog = get_tracking_cog(self.bot)
+            db = tracking_cog.tracked_guilds[guild_id]
+            guild_name = self.bot.get_guild(guild_id)
+
+            with db:
+                with db.bind_ctx([Message]):
+                    # Messages de l'utilisateur dans la période
+                    query = (
+                        Message.select(
+                            fn.DATE(Message.timestamp).alias("date"),
+                            (
+                                fn.SUM(Message.content.contains(terme1))
+                                / fn.COUNT(Message.message_id)
+                            ).alias("terme1"),
+                            (
+                                fn.SUM(Message.content.contains(terme2))
+                                / fn.COUNT(Message.message_id)
+                            ).alias("terme2"),
+                        )
+                        .where(fn.DATE(Message.timestamp) >= jour_debut)
+                        .where(fn.DATE(Message.timestamp) <= jour_fin)
+                        .group_by(fn.DATE(Message.timestamp))
+                    )
+
+                    cur = db.cursor()
+                    query_sql = cur.mogrify(*query.sql())
+                    df = pandas.read_sql(query_sql, db.connection())
+
+
+
+            # Si emote custom : simplifier le nom pour titre DW
+            custom_emoji_str = emoji_to_str(terme1)
+            if custom_emoji_str:
+                terme1 = custom_emoji_str
+            custom_emoji_str = emoji_to_str(terme2)
+            if custom_emoji_str:
+                terme2 = custom_emoji_str
+
+            # Renommage des colonnes
+            df = df.rename(columns={"terme1": terme1, "terme2": terme2})
+
+            # Remplir les dates manquantes
+            df = df.set_index("date")
+            df.index = pandas.DatetimeIndex(df.index)
+            df.reset_index(level=0, inplace=True)
+            df = df.rename(columns={"index": "date"})
+
+            # Rolling average
+            df[terme1] = df.get(terme1).rolling(ROLLING_AVERAGE).mean()
+            df[terme2] = df.get(terme2).rolling(ROLLING_AVERAGE).mean()
+
+            title_lines = textwrap.wrap(f"<b>'{terme1}'</b> vs <b>'{terme2}'</b>")
+            title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
+            title = "<br>".join(title_lines)
+            fig: go.Figure = px.line(
+                df,
+                x="date",
+                y=[terme1, terme2],
+                color_discrete_sequence=["yellow", "#4585e6"],
+                template="plotly_dark",
+                title=title,
+                render_mode="svg"
+            )
+
+            # Hide y-axis
+            fig.update_yaxes(visible=False, fixedrange=True)
+
+            fig.add_layout_image(
+                dict(
+                    source="https://i.imgur.com/Eqy58rg.png",
+                    xref="paper",
+                    yref="paper",
+                    x=1.1,
+                    y=-0.22,
+                    sizex=0.25,
+                    sizey=0.25,
+                    xanchor="right",
+                    yanchor="bottom",
+                    opacity=0.8,
+                )
+            )
+
+            img = fig.to_image(format="png", scale=2)
 
             # Envoyer image
             await temp_msg.delete()
