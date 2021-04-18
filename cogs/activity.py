@@ -389,25 +389,25 @@ class Activity(commands.Cog):
             await temp_msg.delete()
             await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
 
-    @commands.command(name="vsbeta")
+    @commands.command(name="vs")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
-    async def comparebeta(self, ctx: commands.Context, terme1: str, terme2: str):
+    async def compare(self, ctx: commands.Context, terme1: str, terme2: str):
         """ Compare deux tendances """
         assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._comparebeta(ctx, ctx.guild.id, terme1, terme2)
+        await self._compare(ctx, ctx.guild.id, terme1, terme2)
 
-    @commands.command(name="vsbetaid")
+    @commands.command(name="vsid")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     @commands.is_owner()
-    async def comparebeta_id(
+    async def compare_id(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
         """ Compare deux tendances """
-        await self._comparebeta(ctx, guild_id, terme1, terme2)
+        await self._compare(ctx, guild_id, terme1, terme2)
 
-    async def _comparebeta(self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str):
+    async def _compare(self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str):
         """ Trend comparison """
         assert isinstance(
             ctx.author, discord.Member
