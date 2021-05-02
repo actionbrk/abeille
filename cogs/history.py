@@ -67,7 +67,7 @@ class History(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def save(self, ctx: commands.Context, channel_id: int, count: int = 20):
-        """ Sauvegarde les messages dans le passé à partir d'ici """
+        """Sauvegarde les messages dans le passé à partir d'ici"""
         channel = self.bot.get_channel(channel_id)
         tracking_cog = get_tracking_cog(self.bot)
         if not isinstance(channel, discord.TextChannel):
@@ -90,7 +90,7 @@ class History(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def saveall(self, ctx: commands.Context, guild_id: int, count: int = 20):
-        """ Sauvegarde les messages de tous les channels possibles à partir d'ici """
+        """Sauvegarde les messages de tous les channels possibles à partir d'ici"""
         save_results = {}
         impossible_channels = []
         tracking_cog = get_tracking_cog(self.bot)
@@ -129,7 +129,7 @@ class History(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def saveoldall(self, ctx: commands.Context, guild_id: int, count: int = 20):
-        """ Save old sur les channels connus en db """
+        """Save old sur les channels connus en db"""
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
         guild = self.bot.get_guild(guild_id)
@@ -196,7 +196,7 @@ class History(commands.Cog):
         around: Union[Snowflake, datetime.datetime] = None,
         oldest_first: bool = None,
     ) -> SaveResult:
-        """ Enregistre les messages d'un channel dans la BDD associée """
+        """Enregistre les messages d'un channel dans la BDD associée"""
         tracking_cog = get_tracking_cog(self.bot)
         guild = channel.guild
         db: Database = tracking_cog.tracked_guilds[guild.id]
@@ -236,7 +236,7 @@ class History(commands.Cog):
         return save_result
 
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
-        """ Récupérer la liste des channels connus en db """
+        """Récupérer la liste des channels connus en db"""
         known_channels = []
         with db:
             with db.bind_ctx([Message]):

@@ -40,7 +40,7 @@ class Activity(commands.Cog):
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     async def comparedw(self, ctx: commands.Context, terme1: str, terme2: str):
-        """ Compare trends with Datawrapper """
+        """Compare trends with Datawrapper"""
         assert ctx.guild is not None, "Impossible de récupérer la guild"
         await self._comparedw(ctx, ctx.guild.id, terme1, terme2)
 
@@ -51,13 +51,13 @@ class Activity(commands.Cog):
     async def comparedw_id(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
-        """ Compare deux tendances """
+        """Compare deux tendances"""
         await self._compare(ctx, guild_id, terme1, terme2)
 
     async def _comparedw(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
-        """ Compare deux tendances """
+        """Compare deux tendances"""
         if False in (str_input_ok(terme1), str_input_ok(terme2)):
             await ctx.send("Je ne peux pas faire de tendance avec une expression vide.")
             return
@@ -161,7 +161,7 @@ class Activity(commands.Cog):
         await self._trenddw(ctx, guild_id, terme)
 
     async def _trenddw(self, ctx: commands.Context, guild_id: int, terme: str):
-        """ Trend using Datawrapper """
+        """Trend using Datawrapper"""
         if not str_input_ok(terme):
             await ctx.send("Je ne peux pas faire de tendance avec une expression vide.")
             return
@@ -245,9 +245,9 @@ class Activity(commands.Cog):
         data: Any,
         properties: Dict[str, Any],
     ) -> None:
-        """ Create, send and delete chart """
+        """Create, send and delete chart"""
         chart_id = await self._generate_chart(
-            title, intro, chart_type, data, properties,
+            title, intro, chart_type, data, properties
         )
 
         # Envoyer image
@@ -269,7 +269,7 @@ class Activity(commands.Cog):
         properties: Dict[str, Any],
     ) -> str:
         new_chart_info = self.dw.create_chart(
-            title=title, chart_type=chart_type, data=data,
+            title=title, chart_type=chart_type, data=data
         )
         chart_id = new_chart_info["id"]
         # Update
@@ -298,7 +298,7 @@ class Activity(commands.Cog):
         await self._trend(ctx, guild_id, terme)
 
     async def _trend(self, ctx: commands.Context, guild_id: int, terme: str):
-        """ Trending last X days """
+        """Trending last X days"""
         assert isinstance(
             ctx.author, discord.Member
         ), "Avez-vous exécuté la commande depuis un salon ?"
@@ -393,7 +393,7 @@ class Activity(commands.Cog):
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     async def compare(self, ctx: commands.Context, terme1: str, terme2: str):
-        """ Compare deux tendances """
+        """Compare deux tendances"""
         assert ctx.guild is not None, "Impossible de récupérer la guild"
         await self._compare(ctx, ctx.guild.id, terme1, terme2)
 
@@ -404,11 +404,13 @@ class Activity(commands.Cog):
     async def compare_id(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
-        """ Compare deux tendances """
+        """Compare deux tendances"""
         await self._compare(ctx, guild_id, terme1, terme2)
 
-    async def _compare(self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str):
-        """ Trend comparison """
+    async def _compare(
+        self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
+    ):
+        """Trend comparison"""
         assert isinstance(
             ctx.author, discord.Member
         ), "Avez-vous exécuté la commande depuis un salon ?"
@@ -456,8 +458,6 @@ class Activity(commands.Cog):
                     query_sql = cur.mogrify(*query.sql())
                     df = pandas.read_sql(query_sql, db.connection())
 
-
-
             # Si emote custom : simplifier le nom pour titre DW
             custom_emoji_str = emoji_to_str(terme1)
             if custom_emoji_str:
@@ -499,7 +499,12 @@ class Activity(commands.Cog):
             # Legend position
             fig.update_layout(
                 legend=dict(
-                    title=None, orientation="h", y=1, yanchor="bottom", x=0.5, xanchor="center"
+                    title=None,
+                    orientation="h",
+                    y=1,
+                    yanchor="bottom",
+                    x=0.5,
+                    xanchor="center",
                 )
             )
 

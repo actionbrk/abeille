@@ -24,7 +24,7 @@ class Privacy(commands.Cog):
     @commands.guild_only()
     @commands.is_owner()
     async def purge(self, ctx: commands.Context):
-        """ Vérifier les messages supprimés sur cette guild """
+        """Vérifier les messages supprimés sur cette guild"""
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
@@ -81,7 +81,7 @@ class Privacy(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def export(self, ctx: commands.Context):
-        """ Exporter les données de la guild """
+        """Exporter les données de la guild"""
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
@@ -130,7 +130,7 @@ class Privacy(commands.Cog):
     @commands.command(aliases=["supprime", "supprimer"])
     @commands.guild_only()
     async def delete(self, ctx: commands.Context, message_id: int):
-        """ Supprimer un message oublié par Abeille """
+        """Supprimer un message oublié par Abeille"""
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations

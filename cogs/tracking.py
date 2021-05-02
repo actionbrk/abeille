@@ -23,7 +23,7 @@ hash_name: str = os.getenv("HASHNAME")  # type:ignore
 
 
 def get_message(message: discord.Message) -> Message:
-    """ Convertir un message Discord en un message de BDD """
+    """Convertir un message Discord en un message de BDD"""
     message_id = message.id
     author_id = hashlib.pbkdf2_hmac(
         hash_name, str(message.author.id).encode(), salt, iterations
@@ -46,7 +46,7 @@ def get_message(message: discord.Message) -> Message:
 
 
 def get_tracking_cog(bot: commands.Bot) -> "Tracking":
-    """ Récupérer le cog Tracking """
+    """Récupérer le cog Tracking"""
     tracking_cog = bot.get_cog("Tracking")
     assert isinstance(tracking_cog, Tracking), "Impossible de récupérer le cog Tracking"
     return tracking_cog
@@ -63,11 +63,11 @@ class Tracking(commands.Cog):
         self._load_tracked_guilds()
 
     def get_guild_db(self, guild_id) -> Optional[Database]:
-        """ Retourne la Database associée à l'ID de guild, None si pas trouvée """
+        """Retourne la Database associée à l'ID de guild, None si pas trouvée"""
         return self.tracked_guilds.get(guild_id)
 
     def _load_tracked_guilds(self):
-        """ Charger les guilds à tracker et les channels à ignorer """
+        """Charger les guilds à tracker et les channels à ignorer"""
         config = configparser.ConfigParser(allow_no_value=True)
         p = pathlib.Path(__file__).parent.parent
         config.read(p / "config.ini")
@@ -118,7 +118,7 @@ class Tracking(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """ Message détecté """
+        """Message détecté"""
 
         # TODO: Enregistrer en BDD le timestamp du dernier message enregistré pour relancer un
         # saveall depuis cette date lors du lancement du cog

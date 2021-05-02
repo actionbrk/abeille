@@ -14,7 +14,7 @@ hash_name: str = os.getenv("HASHNAME")  # type:ignore
 
 
 async def is_admin(ctx: commands.Context):
-    """ Vrai si administrateur de la guild """
+    """Vrai si administrateur de la guild"""
     if not isinstance(ctx.author, discord.Member):
         return False
     return ctx.author.guild_permissions.administrator
@@ -38,7 +38,7 @@ class Admin(commands.Cog):
         await self._check(ctx, guild_id)
 
     async def _check(self, ctx: commands.Context, guild_id: int):
-        """ Vérifie quels channels sont enregistrés """
+        """Vérifie quels channels sont enregistrés"""
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
         guild = self.bot.get_guild(guild_id)
