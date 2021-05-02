@@ -47,8 +47,9 @@ def get_message(message: discord.Message) -> Message:
 
 def get_tracking_cog(bot: commands.Bot) -> "Tracking":
     """Récupérer le cog Tracking"""
-    tracking_cog = bot.get_cog("Tracking")
-    assert isinstance(tracking_cog, Tracking), "Impossible de récupérer le cog Tracking"
+    tracking_cog: Optional["Tracking"] = bot.get_cog("Tracking")  # type: ignore
+    if tracking_cog is None:
+        raise Exception("Impossible de récupérer le cog Tracking")
     return tracking_cog
 
 
