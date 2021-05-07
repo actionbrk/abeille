@@ -300,6 +300,7 @@ class Activity(commands.Cog):
         ],
     )
     async def trend_slash(self, ctx: SlashContext, terme: str):
+        await ctx.defer()
         guild_id = ctx.guild.id
         jour_debut = date.today() - timedelta(days=PERIODE)
         jour_fin = date.today() - timedelta(days=1)
