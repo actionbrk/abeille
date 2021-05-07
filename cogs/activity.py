@@ -288,12 +288,12 @@ class Activity(commands.Cog):
 
     @cog_ext.cog_slash(
         name="trend",
-        description="Tendance d'une expression (en développement)",
+        description="Dessiner la tendance d'une expression (bêta).",
         guild_ids=guild_ids,
         options=[
             create_option(
-                name="terme",
-                description="Mot ou phrase",
+                name="expression",
+                description="Vous pouvez saisir un mot ou une phrase",
                 option_type=3,
                 required=True,
             )
