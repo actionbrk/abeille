@@ -5,6 +5,7 @@ import traceback
 import logging
 import discord
 from discord.ext import commands
+from discord_slash import SlashCommand
 from dotenv import load_dotenv
 
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +21,8 @@ COGS_DIR = "cogs"
 DESCRIPTION = "Abeille"
 bot = commands.Bot(command_prefix=commands.when_mentioned, description=DESCRIPTION)
 bot.remove_command("help")
+
+slash = SlashCommand(bot)
 
 
 if __name__ == "__main__":
