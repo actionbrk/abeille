@@ -292,7 +292,7 @@ class Activity(commands.Cog):
         guild_ids=guild_ids,
         options=[
             create_option(
-                name="expression",
+                name="terme",
                 description="Vous pouvez saisir un mot ou une phrase",
                 option_type=3,
                 required=True,
