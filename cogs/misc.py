@@ -22,9 +22,6 @@ class Misc(commands.Cog):
             f"Je fonctionne (avec une latence de {self.bot.latency*1000:.0f}ms) ! 🐝"
         )
 
-    async def cog_command_error(self, ctx: commands.Context, error):
-        await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
-
 
 def setup(bot):
     bot.add_cog(Misc(bot))
