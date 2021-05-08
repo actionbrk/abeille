@@ -20,7 +20,7 @@ from common.checks import Maintenance
 from common.utils import emoji_to_str, str_input_ok
 from models.message import Message
 from discord_slash import cog_ext, SlashContext
-from discord_slash.utils.manage_commands import create_option
+from discord_slash.utils.manage_commands import create_option, create_choice
 from cogs.misc import guild_ids
 
 PERIODE = 1100
@@ -288,21 +288,33 @@ class Activity(commands.Cog):
 
     @cog_ext.cog_slash(
         name="trend",
-        description="Dessiner la tendance d'une expression (bêta).",
+        description="Dessiner la tendance d'une expression.",
         guild_ids=guild_ids,
         options=[
             create_option(
                 name="terme",
-                description="Vous pouvez saisir un mot ou une phrase",
+                description="Saisissez un mot ou une phrase.",
                 option_type=3,
                 required=True,
-            )
+            ),
+            create_option(
+                name="periode",
+                description="Période de temps max sur laquelle dessiner la tendance.",
+                option_type=3,
+                required=True,
+                choices=[
+                    create_choice(name="6 mois", value="182"),
+                    create_choice(name="1 an", value="365"),
+                    create_choice(name="2 ans", value="730"),
+                    create_choice(name="3 ans", value="1096"),
+                ],
+            ),
         ],
     )
-    async def trend_slash(self, ctx: SlashContext, terme: str):
+    async def trend_slash(self, ctx: SlashContext, terme: str, periode: str):
         await ctx.defer()
         guild_id = ctx.guild.id
-        jour_debut = date.today() - timedelta(days=PERIODE)
+        jour_debut = date.today() - timedelta(days=int(periode))
         jour_fin = date.today() - timedelta(days=1)
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
@@ -381,7 +393,7 @@ class Activity(commands.Cog):
     @commands.guild_only()
     async def trend(self, ctx: commands.Context, *, terme: str):
         assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._trend(ctx, ctx.guild.id, terme)
+        await ctx.reply("Utilisez la nouvelle commande slash ! `/trend` 🐝")
 
     @commands.command(name="trendid")
     @commands.max_concurrency(1, wait=True)
