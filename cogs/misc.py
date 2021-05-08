@@ -18,10 +18,12 @@ class Misc(commands.Cog):
 
     @cog_ext.cog_slash(name="bzz", description="Bzz bzz ! 🐝", guild_ids=guild_ids)
     async def ping(self, ctx: SlashContext):
-        await ctx.send("Je vais bientôt marcher avec des commandes slash ! 🐝")
+        await ctx.send(
+            f"Je fonctionne (avec une latence de {self.bot.latency*1000:.0f}ms) ! 🐝"
+        )
 
     async def cog_command_error(self, ctx: commands.Context, error):
-        await ctx.reply(f"Quelque chose s'est mal passée ({error}). 🐝")
+        await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
 
 
 def setup(bot):
