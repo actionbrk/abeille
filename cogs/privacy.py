@@ -1,13 +1,17 @@
-import discord
+import csv
 import hashlib
 import os
-import csv
-from dotenv import load_dotenv
+
+import discord
 from discord.ext import commands
+from discord_slash import cog_ext
+from discord_slash.context import SlashContext
+from dotenv import load_dotenv
+from models.message import Message
 from peewee import DoesNotExist
 
+from cogs.misc import guild_ids
 from cogs.tracking import get_tracking_cog
-from models.message import Message
 
 # Chargement paramètres DB
 load_dotenv()
@@ -78,27 +82,23 @@ class Privacy(commands.Cog):
         )
         await msg_bot.edit(content=" ".join(result))
 
-    @commands.command()
-    @commands.guild_only()
-    async def export(self, ctx: commands.Context):
-        """Exporter les données de la guild"""
+    @cog_ext.cog_slash(
+        name="export",
+        description="Télécharger les données d'Abeille vous concernant sur cette guild.",
+        guild_ids=guild_ids,
+    )
+    async def export_slash(self, ctx: SlashContext):
+        await ctx.defer()
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
         ).hex()
         guild = ctx.guild
-        if guild is None:
-            await ctx.reply("Guild inconnue")
-            return
 
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild.id]
 
         temp_csv_path = f"/tmp/export_{author_id[:5]}.csv"
-
-        await ctx.author.send(
-            f"Je récupère les messages vous concernant sur la guild **{guild.name}**... 🐝"
-        )
 
         with db:
             with db.bind_ctx([Message]):
@@ -117,7 +117,7 @@ class Privacy(commands.Cog):
             "Voici les messages de vous que j'ai récoltés.",
             "Si vous souhaitez supprimer définitivement",
             "un message de ma ruche, utilisez la commande",
-            "`@Abeille supprime <message_id>`.",
+            "`@Abeille delete <message_id>`.",
             "L'ID du message est la première information de chaque",
             "ligne du fichier que j'ai envoyé 🐝",
         )
@@ -127,7 +127,12 @@ class Privacy(commands.Cog):
         )
         os.remove(temp_csv_path)
 
-    @commands.command(aliases=["supprime", "supprimer"])
+        await ctx.send(
+            "Les données vous concernant vous ont été envoyées par message privé. 🐝",
+            hidden=True,
+        )
+
+    @commands.command()
     @commands.guild_only()
     async def delete(self, ctx: commands.Context, message_id: int):
         """Supprimer un message oublié par Abeille"""
