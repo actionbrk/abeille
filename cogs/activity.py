@@ -39,24 +39,6 @@ class Activity(commands.Cog):
         self.bot = bot
         self.dw = Datawrapper(access_token=token)  # pylint: disable=invalid-name
 
-    @commands.command(name="vsdw", aliases=["comparedw"])
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    async def comparedw(self, ctx: commands.Context, terme1: str, terme2: str):
-        """Compare trends with Datawrapper"""
-        assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._comparedw(ctx, ctx.guild.id, terme1, terme2)
-
-    @commands.command(name="vsdwid", aliases=["comparedwid"])
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    @commands.is_owner()
-    async def comparedw_id(
-        self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
-    ):
-        """Compare deux tendances"""
-        await self._compare(ctx, guild_id, terme1, terme2)
-
     async def _comparedw(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
@@ -148,20 +130,6 @@ class Activity(commands.Cog):
         )
 
         await temp_msg.delete()
-
-    @commands.command(name="trenddw")
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    async def trenddw(self, ctx: commands.Context, *, terme: str):
-        assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._trenddw(ctx, ctx.guild.id, terme)
-
-    @commands.command(name="trenddwid")
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    @commands.is_owner()
-    async def trenddw_debug(self, ctx: commands.Context, guild_id: int, *, terme: str):
-        await self._trenddw(ctx, guild_id, terme)
 
     async def _trenddw(self, ctx: commands.Context, guild_id: int, terme: str):
         """Trend using Datawrapper"""
@@ -392,32 +360,11 @@ class Activity(commands.Cog):
         # Envoyer image
         await ctx.send(file=discord.File(io.BytesIO(img), "abeille.png"))
 
-    @commands.command(name="trend", aliases=["trendbeta"])
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    async def trend(self, ctx: commands.Context, *, terme: str):
-        assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await ctx.reply("Utilisez la nouvelle commande slash ! `/trend` 🐝")
-
     @commands.command(name="trendid")
     @commands.max_concurrency(1, wait=True)
     @commands.guild_only()
     @commands.is_owner()
     async def trend_id(self, ctx: commands.Context, guild_id: int, *, terme: str):
-        await self._trend(ctx, guild_id, terme)
-
-    async def _trend(self, ctx: commands.Context, guild_id: int, terme: str):
-        """Trending last X days"""
-        assert isinstance(
-            ctx.author, discord.Member
-        ), "Avez-vous exécuté la commande depuis un salon ?"
-
-        if not str_input_ok(terme):
-            await ctx.reply(
-                "Je ne peux pas faire de tendance avec une expression vide."
-            )
-            return
-
         temp_msg: discord.Message = await ctx.reply(
             f"Je génère les tendances de **{terme}**... 🐝"
         )
@@ -429,13 +376,149 @@ class Activity(commands.Cog):
             await temp_msg.delete()
             await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
 
-    @commands.command(name="vs")
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    async def compare(self, ctx: commands.Context, terme1: str, terme2: str):
-        """Compare deux tendances"""
-        assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._compare(ctx, ctx.guild.id, terme1, terme2)
+    @cog_ext.cog_slash(
+        name="compare",
+        description="Comparer la tendance de deux expressions.",
+        guild_ids=guild_ids,
+        options=[
+            create_option(
+                name="expression1",
+                description="Saisissez un mot ou une phrase.",
+                option_type=3,
+                required=True,
+            ),
+            create_option(
+                name="expression2",
+                description="Saisissez un mot ou une phrase.",
+                option_type=3,
+                required=True,
+            ),
+            create_option(
+                name="periode",
+                description="Période de temps max sur laquelle dessiner la tendance.",
+                option_type=3,
+                required=True,
+                choices=[
+                    create_choice(name="6 mois", value="182"),
+                    create_choice(name="1 an", value="365"),
+                    create_choice(name="2 ans", value="730"),
+                    create_choice(name="3 ans", value="1096"),
+                ],
+            ),
+        ],
+    )
+    async def compare_slash(
+        self, ctx: SlashContext, expression1: str, expression2: str, periode: str
+    ):
+        await ctx.defer()
+        guild_id = ctx.guild.id
+
+        img = await self._get_compare_img(
+            guild_id, expression1, expression2, int(periode)
+        )
+
+        # Envoyer image
+        await ctx.send(file=discord.File(io.BytesIO(img), "abeille.png"))
+
+    async def _get_compare_img(
+        self, guild_id: int, expression1: str, expression2: str, periode: int
+    ) -> Any:
+        jour_debut = date.today() - timedelta(days=periode)
+        jour_fin = date.today() - timedelta(days=1)
+        tracking_cog = get_tracking_cog(self.bot)
+        db = tracking_cog.tracked_guilds[guild_id]
+        guild_name = self.bot.get_guild(guild_id)
+
+        with db:
+            with db.bind_ctx([Message]):
+                # Messages de l'utilisateur dans la période
+                query = (
+                    Message.select(
+                        fn.DATE(Message.timestamp).alias("date"),
+                        (
+                            fn.SUM(Message.content.contains(expression1))
+                            / fn.COUNT(Message.message_id)
+                        ).alias("expression1"),
+                        (
+                            fn.SUM(Message.content.contains(expression2))
+                            / fn.COUNT(Message.message_id)
+                        ).alias("expression2"),
+                    )
+                    .where(fn.DATE(Message.timestamp) >= jour_debut)
+                    .where(fn.DATE(Message.timestamp) <= jour_fin)
+                    .group_by(fn.DATE(Message.timestamp))
+                )
+
+                cur = db.cursor()
+                query_sql = cur.mogrify(*query.sql())
+                df = pandas.read_sql(query_sql, db.connection())
+
+        # Si emote custom : simplifier le nom pour titre DW
+        custom_emoji_str = emoji_to_str(expression1)
+        if custom_emoji_str:
+            expression1 = custom_emoji_str
+        custom_emoji_str = emoji_to_str(expression2)
+        if custom_emoji_str:
+            expression2 = custom_emoji_str
+
+        # Renommage des colonnes
+        df = df.rename(columns={"expression1": expression1, "expression2": expression2})
+
+        # Remplir les dates manquantes
+        df = df.set_index("date")
+        df.index = pandas.DatetimeIndex(df.index)
+        df.reset_index(level=0, inplace=True)
+        df = df.rename(columns={"index": "date"})
+
+        # Rolling average
+        df[expression1] = df.get(expression1).rolling(ROLLING_AVERAGE).mean()
+        df[expression2] = df.get(expression2).rolling(ROLLING_AVERAGE).mean()
+
+        title_lines = textwrap.wrap(f"<b>'{expression1}'</b> vs <b>'{expression2}'</b>")
+        title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
+        title = "<br>".join(title_lines)
+        fig: go.Figure = px.line(
+            df,
+            x="date",
+            y=[expression1, expression2],
+            color_discrete_sequence=["yellow", "#4585e6"],
+            template="plotly_dark",
+            title=title,
+            render_mode="svg",
+            labels={"date": "", "variable": ""},
+        )
+
+        # Hide y-axis
+        fig.update_yaxes(visible=False, fixedrange=True)
+
+        # Legend position
+        fig.update_layout(
+            legend=dict(
+                title=None,
+                orientation="h",
+                y=1,
+                yanchor="bottom",
+                x=0.5,
+                xanchor="center",
+            )
+        )
+
+        fig.add_layout_image(
+            dict(
+                source="https://i.imgur.com/Eqy58rg.png",
+                xref="paper",
+                yref="paper",
+                x=1.1,
+                y=-0.22,
+                sizex=0.25,
+                sizey=0.25,
+                xanchor="right",
+                yanchor="bottom",
+                opacity=0.8,
+            )
+        )
+
+        return fig.to_image(format="png", scale=2)
 
     @commands.command(name="vsid")
     @commands.max_concurrency(1, wait=True)
@@ -444,126 +527,12 @@ class Activity(commands.Cog):
     async def compare_id(
         self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
     ):
-        """Compare deux tendances"""
-        await self._compare(ctx, guild_id, terme1, terme2)
-
-    async def _compare(
-        self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
-    ):
-        """Trend comparison"""
-        assert isinstance(
-            ctx.author, discord.Member
-        ), "Avez-vous exécuté la commande depuis un salon ?"
-
-        if False in (str_input_ok(terme1), str_input_ok(terme2)):
-            await ctx.send("Je ne peux pas faire de tendance avec une expression vide.")
-            return
-
-        # Si les deux mêmes, faire un _trend
-        if terme1 == terme2:
-            return await self._trend(ctx, guild_id, terme1)
-
         temp_msg: discord.Message = await ctx.send(
             f"Je génère les tendances comparées de **{terme1}** et **{terme2}**... 🐝"
         )
 
         async with ctx.typing():
-            jour_debut = date.today() - timedelta(days=PERIODE)
-            jour_fin = date.today() - timedelta(days=1)
-            tracking_cog = get_tracking_cog(self.bot)
-            db = tracking_cog.tracked_guilds[guild_id]
-            guild_name = self.bot.get_guild(guild_id)
-
-            with db:
-                with db.bind_ctx([Message]):
-                    # Messages de l'utilisateur dans la période
-                    query = (
-                        Message.select(
-                            fn.DATE(Message.timestamp).alias("date"),
-                            (
-                                fn.SUM(Message.content.contains(terme1))
-                                / fn.COUNT(Message.message_id)
-                            ).alias("terme1"),
-                            (
-                                fn.SUM(Message.content.contains(terme2))
-                                / fn.COUNT(Message.message_id)
-                            ).alias("terme2"),
-                        )
-                        .where(fn.DATE(Message.timestamp) >= jour_debut)
-                        .where(fn.DATE(Message.timestamp) <= jour_fin)
-                        .group_by(fn.DATE(Message.timestamp))
-                    )
-
-                    cur = db.cursor()
-                    query_sql = cur.mogrify(*query.sql())
-                    df = pandas.read_sql(query_sql, db.connection())
-
-            # Si emote custom : simplifier le nom pour titre DW
-            custom_emoji_str = emoji_to_str(terme1)
-            if custom_emoji_str:
-                terme1 = custom_emoji_str
-            custom_emoji_str = emoji_to_str(terme2)
-            if custom_emoji_str:
-                terme2 = custom_emoji_str
-
-            # Renommage des colonnes
-            df = df.rename(columns={"terme1": terme1, "terme2": terme2})
-
-            # Remplir les dates manquantes
-            df = df.set_index("date")
-            df.index = pandas.DatetimeIndex(df.index)
-            df.reset_index(level=0, inplace=True)
-            df = df.rename(columns={"index": "date"})
-
-            # Rolling average
-            df[terme1] = df.get(terme1).rolling(ROLLING_AVERAGE).mean()
-            df[terme2] = df.get(terme2).rolling(ROLLING_AVERAGE).mean()
-
-            title_lines = textwrap.wrap(f"<b>'{terme1}'</b> vs <b>'{terme2}'</b>")
-            title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
-            title = "<br>".join(title_lines)
-            fig: go.Figure = px.line(
-                df,
-                x="date",
-                y=[terme1, terme2],
-                color_discrete_sequence=["yellow", "#4585e6"],
-                template="plotly_dark",
-                title=title,
-                render_mode="svg",
-                labels={"date": "", "variable": ""},
-            )
-
-            # Hide y-axis
-            fig.update_yaxes(visible=False, fixedrange=True)
-
-            # Legend position
-            fig.update_layout(
-                legend=dict(
-                    title=None,
-                    orientation="h",
-                    y=1,
-                    yanchor="bottom",
-                    x=0.5,
-                    xanchor="center",
-                )
-            )
-
-            fig.add_layout_image(
-                dict(
-                    source="https://i.imgur.com/Eqy58rg.png",
-                    xref="paper",
-                    yref="paper",
-                    x=1.1,
-                    y=-0.22,
-                    sizex=0.25,
-                    sizey=0.25,
-                    xanchor="right",
-                    yanchor="bottom",
-                    opacity=0.8,
-                )
-            )
-
-            img = fig.to_image(format="png", scale=2)
+            img = await self._get_compare_img(guild_id, terme1, terme2, PERIODE)
 
             # Envoyer image
             await temp_msg.delete()
