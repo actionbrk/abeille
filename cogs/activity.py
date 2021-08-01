@@ -340,22 +340,22 @@ class Activity(commands.Cog):
             create_option(
                 name="periode",
                 description="Période de temps max sur laquelle dessiner la tendance.",
-                option_type=3,
+                option_type=4,
                 required=True,
                 choices=[
-                    create_choice(name="6 mois", value="182"),
-                    create_choice(name="1 an", value="365"),
-                    create_choice(name="2 ans", value="730"),
-                    create_choice(name="3 ans", value="1096"),
+                    create_choice(name="6 mois", value=182),
+                    create_choice(name="1 an", value=365),
+                    create_choice(name="2 ans", value=730),
+                    create_choice(name="3 ans", value=1096),
                 ],
             ),
         ],
     )
-    async def trend_slash(self, ctx: SlashContext, terme: str, periode: str):
+    async def trend_slash(self, ctx: SlashContext, terme: str, periode: int):
         await ctx.defer()
         guild_id = ctx.guild.id
 
-        img = await self._get_trend_img(guild_id, terme, int(periode))
+        img = await self._get_trend_img(guild_id, terme, periode)
 
         # Envoyer image
         await ctx.send(file=discord.File(io.BytesIO(img), "abeille.png"))
@@ -396,13 +396,13 @@ class Activity(commands.Cog):
             create_option(
                 name="periode",
                 description="Période de temps max sur laquelle dessiner la tendance.",
-                option_type=3,
+                option_type=4,
                 required=True,
                 choices=[
-                    create_choice(name="6 mois", value="182"),
-                    create_choice(name="1 an", value="365"),
-                    create_choice(name="2 ans", value="730"),
-                    create_choice(name="3 ans", value="1096"),
+                    create_choice(name="6 mois", value=182),
+                    create_choice(name="1 an", value=365),
+                    create_choice(name="2 ans", value=730),
+                    create_choice(name="3 ans", value=1096),
                 ],
             ),
         ],
@@ -413,9 +413,7 @@ class Activity(commands.Cog):
         await ctx.defer()
         guild_id = ctx.guild.id
 
-        img = await self._get_compare_img(
-            guild_id, expression1, expression2, int(periode)
-        )
+        img = await self._get_compare_img(guild_id, expression1, expression2, periode)
 
         # Envoyer image
         await ctx.send(file=discord.File(io.BytesIO(img), "abeille.png"))
