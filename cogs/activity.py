@@ -408,7 +408,7 @@ class Activity(commands.Cog):
         ],
     )
     async def compare_slash(
-        self, ctx: SlashContext, expression1: str, expression2: str, periode: str
+        self, ctx: SlashContext, expression1: str, expression2: str, periode: int
     ):
         await ctx.defer()
         guild_id = ctx.guild.id
