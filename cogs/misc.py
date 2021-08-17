@@ -4,6 +4,7 @@ from discord_slash import cog_ext, SlashContext
 import configparser
 import pathlib
 
+# TODO: guilds_ids is used by other cogs, may cause problems when reloading them
 guild_ids = []
 config = configparser.ConfigParser(allow_no_value=True)
 p = pathlib.Path(__file__).parent.parent
