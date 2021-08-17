@@ -1,5 +1,6 @@
 """ Commandes de tendances """
 
+import hashlib
 import io
 import os
 import textwrap
@@ -13,7 +14,7 @@ import plotly.graph_objects as go
 from datawrapper import Datawrapper
 from discord.ext import commands
 from dotenv import load_dotenv
-from peewee import fn
+from peewee import Select, fn
 
 from cogs.tracking import get_tracking_cog
 from common.checks import Maintenance
@@ -547,6 +548,71 @@ class Activity(commands.Cog):
             await ctx.send("Vous avez mal utilisé la commande ! 🐝")
         else:
             await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
+
+    @cog_ext.cog_slash(
+        name="rank",
+        description="[INDEV] Votre classement dans l'utilisation d'une expression.",
+        guild_ids=guild_ids,
+        options=[
+            create_option(
+                name="expression",
+                description="Saisissez un mot ou une phrase.",
+                option_type=3,
+                required=True,
+            ),
+            create_option(
+                name="periode",
+                description="Période de temps max sur laquelle calculer le classement.",
+                option_type=4,
+                required=True,
+                choices=[
+                    create_choice(name="6 mois", value=182),
+                    create_choice(name="1 an", value=365),
+                    create_choice(name="2 ans", value=730),
+                    create_choice(name="3 ans", value=1096),
+                ],
+            ),
+        ],
+    )
+    async def rank_slash(self, ctx: SlashContext, expression: str, periode: int):
+        await ctx.defer()
+        author = ctx.author
+        author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(author.id).encode(), salt, iterations
+        ).hex()
+        guild_id = ctx.guild.id
+
+        jour_debut = date.today() - timedelta(days=periode)
+        jour_fin = date.today() - timedelta(days=1)
+        tracking_cog = get_tracking_cog(self.bot)
+        db = tracking_cog.tracked_guilds[guild_id]
+
+        with db:
+            with db.bind_ctx([Message]):
+                rank = fn.rank().over(order_by=[fn.COUNT(Message.message_id).desc()])
+
+                subq = (
+                    Message.select(Message.author_id, rank.alias("rank"))
+                    .where(Message.content.contains(expression))
+                    .where(fn.DATE(Message.timestamp) >= jour_debut)
+                    .where(fn.DATE(Message.timestamp) <= jour_fin)
+                    .group_by(Message.author_id)
+                )
+
+                # Here we use a plain Select() to create our query.
+                query = (
+                    Select(columns=[subq.c.author_id, subq.c.rank])
+                    .from_(subq)
+                    .where(subq.c.author_id == author_id)
+                    .bind(db)
+                )  # We must bind() it to the database.
+
+                test = query.get()
+
+                print("result", test)
+
+        # Envoyer image
+        await ctx.send(test)
 
 
 def setup(bot):
