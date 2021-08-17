@@ -594,11 +594,11 @@ class Activity(commands.Cog):
                 _author_id, rank = query.scalar(as_tuple=True)
 
         if rank == 1:
-            result = f"🥇 Bravo ! Vous êtes le membre ayant le plus utilisé l'expression **'{expression}**"
+            result = f"🥇 Bravo ! Vous êtes le membre ayant le plus utilisé l'expression **'{expression}'**"
         elif rank == 2:
-            result = f"🥈 Vous êtes le 2ème membre à avoir le plus utilisé l'expression **'{expression}**"
+            result = f"🥈 Vous êtes le 2ème membre à avoir le plus utilisé l'expression **'{expression}'**"
         elif rank == 3:
-            result = f"🥉 Vous êtes le 3ème membre à avoir le plus utilisé l'expression **'{expression}**"
+            result = f"🥉 Vous êtes le 3ème membre à avoir le plus utilisé l'expression **'{expression}'**"
         else:
             result = f"Vous êtes le {rank}ème membre à avoir le plus utilisé l'expression **'{expression}'**"
 
