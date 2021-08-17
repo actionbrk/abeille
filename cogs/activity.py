@@ -560,21 +560,9 @@ class Activity(commands.Cog):
                 option_type=3,
                 required=True,
             ),
-            create_option(
-                name="periode",
-                description="Période de temps max sur laquelle calculer le classement.",
-                option_type=4,
-                required=True,
-                choices=[
-                    create_choice(name="6 mois", value=182),
-                    create_choice(name="1 an", value=365),
-                    create_choice(name="2 ans", value=730),
-                    create_choice(name="3 ans", value=1096),
-                ],
-            ),
         ],
     )
-    async def rank_slash(self, ctx: SlashContext, expression: str, periode: int):
+    async def rank_slash(self, ctx: SlashContext, expression: str):
         await ctx.defer()
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
@@ -582,8 +570,6 @@ class Activity(commands.Cog):
         ).hex()
         guild_id = ctx.guild.id
 
-        jour_debut = date.today() - timedelta(days=periode)
-        jour_fin = date.today() - timedelta(days=1)
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
 
@@ -594,8 +580,6 @@ class Activity(commands.Cog):
                 subq = (
                     Message.select(Message.author_id, rank.alias("rank"))
                     .where(Message.content.contains(expression))
-                    .where(fn.DATE(Message.timestamp) >= jour_debut)
-                    .where(fn.DATE(Message.timestamp) <= jour_fin)
                     .group_by(Message.author_id)
                 )
 
@@ -607,12 +591,18 @@ class Activity(commands.Cog):
                     .bind(db)
                 )  # We must bind() it to the database.
 
-                test = query.get()
+                _author_id, rank = query.scalar(as_tuple=True)
 
-                print("result", test)
+        if rank == 1:
+            result = f"🥇 Bravo ! Vous êtes le membre ayant le plus utilisé l'expression **'{expression}**"
+        elif rank == 2:
+            result = f"🥈 Vous êtes le 2ème membre à avoir le plus utilisé l'expression **'{expression}**"
+        elif rank == 3:
+            result = f"🥉 Vous êtes le 3ème membre à avoir le plus utilisé l'expression **'{expression}**"
+        else:
+            result = f"Vous êtes le {rank}ème membre à avoir le plus utilisé l'expression **'{expression}'**"
 
-        # Envoyer image
-        await ctx.send(test)
+        await ctx.send(result)
 
 
 def setup(bot):
