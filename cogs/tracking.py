@@ -119,7 +119,7 @@ class Tracking(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Message détecté"""
+        """Message sent"""
 
         # TODO: Enregistrer en BDD le timestamp du dernier message enregistré pour relancer un
         # saveall depuis cette date lors du lancement du cog
@@ -152,6 +152,7 @@ class Tracking(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
+        """Message deleted"""
         # Si message privé
         if not message.guild:
             return
@@ -179,6 +180,7 @@ class Tracking(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, _before: discord.Message, after: discord.Message):
+        """Message edited"""
 
         # Si message privé
         if not after.guild:

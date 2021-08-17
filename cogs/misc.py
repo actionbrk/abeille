@@ -16,7 +16,9 @@ class Misc(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @cog_ext.cog_slash(name="bzz", description="Bzz bzz ! 🐝", guild_ids=guild_ids)
+    @cog_ext.cog_slash(
+        name="bzz", description="Bzz bzz (ping) ! 🐝", guild_ids=guild_ids
+    )
     async def ping(self, ctx: SlashContext):
         await ctx.send(
             f"Je fonctionne (avec une latence de {self.bot.latency*1000:.0f}ms) ! 🐝"
