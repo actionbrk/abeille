@@ -126,67 +126,6 @@ class History(commands.Cog):
 
         await ctx.send("Fini !")
 
-    @commands.command()
-    @commands.is_owner()
-    async def savenew(self, ctx: commands.Context, guild_id: int, count: int = 20):
-        """Save from newest message in channel"""
-        save_results = {}
-        impossible_channels = []
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
-
-        guild = self.bot.get_guild(guild_id)
-        if guild is None:
-            await ctx.reply("Je ne trouve pas cette guild")
-            return
-
-        # Détection des channels
-        for channel in guild.channels:
-            if not isinstance(channel, discord.TextChannel):
-                continue
-
-            # Si channel ignoré, passer
-            if channel.id in tracking_cog.ignored_channels:
-                await ctx.send(f"Channel {channel.name} ignoré")
-                continue
-
-            # Récupérer le plus ancien message du channel
-            with db:
-                with db.bind_ctx([Message]):
-                    try:
-                        latest = (
-                            Message.select()
-                            .where(Message.channel_id == channel.id)
-                            .order_by(Message.message_id.desc())
-                            .get()
-                        )
-                    except DoesNotExist:
-                        print(f"Pas de message en db pour le channel {channel}")
-                        continue
-
-            # discord.Message correspondant
-            try:
-                latest_msg: discord.Message = await channel.fetch_message(latest)
-            except discord.NotFound:
-                print(
-                    f"Le plus récent message enregistré du channel {channel} n'existe plus"
-                )
-            except discord.Forbidden:
-                print(f"Problème de droit pour le channel {channel}")
-
-            try:
-                save_results[channel.name] = await self._save_from_channel(
-                    channel, count, after=latest_msg
-                )
-            except:
-                impossible_channels.append(channel)
-
-        to_send = []
-        for name, save_result in save_results.items():
-            to_send.append(f"**{name}** (since {latest_msg.created_at})\n{save_result}")
-
-        await ctx.send("\n\n".join(to_send))
-
     async def _save_from_channel(
         self,
         channel: discord.TextChannel,
