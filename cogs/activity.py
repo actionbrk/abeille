@@ -551,7 +551,7 @@ class Activity(commands.Cog):
 
     @cog_ext.cog_slash(
         name="rank",
-        description="[INDEV] Votre classement dans l'utilisation d'une expression.",
+        description="Votre classement dans l'utilisation d'une expression.",
         guild_ids=guild_ids,
         options=[
             create_option(
@@ -575,32 +575,36 @@ class Activity(commands.Cog):
 
         with db:
             with db.bind_ctx([Message]):
-                rank = fn.rank().over(order_by=[fn.COUNT(Message.message_id).desc()])
+                rank_query = fn.rank().over(
+                    order_by=[fn.COUNT(Message.message_id).desc()]
+                )
 
                 subq = (
-                    Message.select(Message.author_id, rank.alias("rank"))
+                    Message.select(Message.author_id, rank_query.alias("rank"))
                     .where(Message.content.contains(expression))
                     .group_by(Message.author_id)
                 )
 
                 # Here we use a plain Select() to create our query.
                 query = (
-                    Select(columns=[subq.c.author_id, subq.c.rank])
+                    Select(columns=[subq.c.rank])
                     .from_(subq)
                     .where(subq.c.author_id == author_id)
                     .bind(db)
                 )  # We must bind() it to the database.
 
-                _author_id, rank = query.scalar(as_tuple=True)
+                rank = query.scalar()
 
-        if rank == 1:
-            result = f"🥇 Bravo ! Vous êtes le membre ayant le plus utilisé l'expression **'{expression}'**"
+        if rank is None:
+            result = f"Vous n'avez jamais utilisé l'expression **'{expression}'**."
+        elif rank == 1:
+            result = f"🥇 Vous êtes le membre ayant le plus utilisé l'expression **'{expression}'**."
         elif rank == 2:
-            result = f"🥈 Vous êtes le 2ème membre à avoir le plus utilisé l'expression **'{expression}'**"
+            result = f"🥈 Vous êtes le 2ème membre à avoir le plus utilisé l'expression **'{expression}'**."
         elif rank == 3:
-            result = f"🥉 Vous êtes le 3ème membre à avoir le plus utilisé l'expression **'{expression}'**"
+            result = f"🥉 Vous êtes le 3ème membre à avoir le plus utilisé l'expression **'{expression}'**."
         else:
-            result = f"Vous êtes le {rank}ème membre à avoir le plus utilisé l'expression **'{expression}'**"
+            result = f"Vous êtes le {rank}ème membre à avoir le plus utilisé l'expression **'{expression}'**."
 
         await ctx.send(result)
 
