@@ -1,7 +1,6 @@
+from common.utils import GUILD_IDS
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
-
-from abeille import guild_ids
 
 
 class Misc(commands.Cog):
@@ -9,7 +8,7 @@ class Misc(commands.Cog):
         self.bot = bot
 
     @cog_ext.cog_slash(
-        name="bzz", description="Bzz bzz (ping) ! 🐝", guild_ids=guild_ids
+        name="bzz", description="Bzz bzz (ping) ! 🐝", guild_ids=GUILD_IDS
     )
     async def ping(self, ctx: SlashContext):
         await ctx.send(

@@ -7,7 +7,6 @@ import discord
 from discord.ext import commands
 from discord_slash import SlashCommand
 from dotenv import load_dotenv
-from configparser import ConfigParser
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,14 +16,6 @@ discord_token = os.getenv("DISCORD_TOKEN")
 
 if discord_token is None:
     sys.exit("DISCORD_TOKEN introuvable")
-
-# Get tracked guilds
-guild_ids = []
-config = ConfigParser(allow_no_value=True)
-p = pathlib.Path(__file__).parent
-config.read(p / "config.ini")
-for guild_id_str in config["Tracked"]:
-    guild_ids.append(int(guild_id_str))
 
 COGS_DIR = "cogs"
 DESCRIPTION = "Abeille"
