@@ -21,7 +21,7 @@ if discord_token is None:
 # Get tracked guilds
 guild_ids = []
 config = ConfigParser(allow_no_value=True)
-p = pathlib.Path(__file__).parent.parent
+p = pathlib.Path(__file__).parent
 config.read(p / "config.ini")
 for guild_id_str in config["Tracked"]:
     guild_ids.append(int(guild_id_str))
