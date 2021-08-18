@@ -1,4 +1,4 @@
-from common.utils import GUILD_IDS
+from common.utils import TRACKED_GUILD_IDS
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
 
@@ -8,7 +8,7 @@ class Misc(commands.Cog):
         self.bot = bot
 
     @cog_ext.cog_slash(
-        name="bzz", description="Bzz bzz (ping) ! 🐝", guild_ids=GUILD_IDS
+        name="bzz", description="Bzz bzz (ping) ! 🐝", guild_ids=TRACKED_GUILD_IDS
     )
     async def ping(self, ctx: SlashContext):
         await ctx.send(

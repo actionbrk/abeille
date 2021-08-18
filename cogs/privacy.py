@@ -1,4 +1,4 @@
-from common.utils import GUILD_IDS
+from common.utils import TRACKED_GUILD_IDS
 import csv
 import hashlib
 import os
@@ -85,7 +85,7 @@ class Privacy(commands.Cog):
     @cog_ext.cog_slash(
         name="export",
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
-        guild_ids=GUILD_IDS,
+        guild_ids=TRACKED_GUILD_IDS,
     )
     async def export_slash(self, ctx: SlashContext):
         await ctx.defer()

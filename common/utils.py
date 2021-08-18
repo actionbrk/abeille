@@ -6,12 +6,12 @@ from configparser import ConfigParser
 from pathlib import Path
 
 CUSTOM_EMOJI = r"<a{0,1}:(\S+):(\d+)>"
-GUILD_IDS = []
+TRACKED_GUILD_IDS = []
 config = ConfigParser(allow_no_value=True)
 p = Path(__file__).parent.parent
 config.read(p / "config.ini")
 for guild_id_str in config["Tracked"]:
-    GUILD_IDS.append(int(guild_id_str))
+    TRACKED_GUILD_IDS.append(int(guild_id_str))
 
 
 def emoji_to_str(emoji_str) -> Optional[str]:

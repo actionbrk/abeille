@@ -20,7 +20,7 @@ from discord_slash.utils.manage_commands import create_option, create_choice
 
 from cogs.tracking import get_tracking_cog
 from common.checks import Maintenance
-from common.utils import GUILD_IDS, emoji_to_str, str_input_ok
+from common.utils import TRACKED_GUILD_IDS, emoji_to_str, str_input_ok
 from models.message import Message
 
 PERIODE = 1100
@@ -329,7 +329,7 @@ class Activity(commands.Cog):
     @cog_ext.cog_slash(
         name="trend",
         description="Dessiner la tendance d'une expression.",
-        guild_ids=GUILD_IDS,
+        guild_ids=TRACKED_GUILD_IDS,
         options=[
             create_option(
                 name="terme",
@@ -379,7 +379,7 @@ class Activity(commands.Cog):
     @cog_ext.cog_slash(
         name="compare",
         description="Comparer la tendance de deux expressions.",
-        guild_ids=GUILD_IDS,
+        guild_ids=TRACKED_GUILD_IDS,
         options=[
             create_option(
                 name="expression1",
@@ -552,7 +552,7 @@ class Activity(commands.Cog):
     @cog_ext.cog_slash(
         name="rank",
         description="Votre classement dans l'utilisation d'une expression.",
-        guild_ids=GUILD_IDS,
+        guild_ids=TRACKED_GUILD_IDS,
         options=[
             create_option(
                 name="expression",
