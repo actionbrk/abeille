@@ -549,6 +549,7 @@ class Activity(commands.Cog):
         else:
             await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
 
+    @commands.max_concurrency(1, wait=True)
     @cog_ext.cog_slash(
         name="rank",
         description="Votre classement dans l'utilisation d'une expression.",
