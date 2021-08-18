@@ -1,3 +1,4 @@
+from common.utils import TRACKED_GUILD_IDS
 import csv
 import hashlib
 import os
@@ -7,10 +8,9 @@ from discord.ext import commands
 from discord_slash import cog_ext
 from discord_slash.context import SlashContext
 from dotenv import load_dotenv
-from models.message import Message
 from peewee import DoesNotExist
 
-from cogs.misc import guild_ids
+from models.message import Message
 from cogs.tracking import get_tracking_cog
 
 # Chargement paramètres DB
@@ -85,7 +85,7 @@ class Privacy(commands.Cog):
     @cog_ext.cog_slash(
         name="export",
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
-        guild_ids=guild_ids,
+        guild_ids=TRACKED_GUILD_IDS,
     )
     async def export_slash(self, ctx: SlashContext):
         await ctx.defer()

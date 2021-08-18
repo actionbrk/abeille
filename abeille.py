@@ -7,7 +7,6 @@ import discord
 from discord.ext import commands
 from discord_slash import SlashCommand
 from dotenv import load_dotenv
-from cogs.misc import guild_ids
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,8 +19,9 @@ if discord_token is None:
 
 COGS_DIR = "cogs"
 DESCRIPTION = "Abeille"
-bot = commands.Bot(command_prefix=commands.when_mentioned, description=DESCRIPTION)
-bot.remove_command("help")
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned, description=DESCRIPTION, help_command=None
+)
 
 slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
 
