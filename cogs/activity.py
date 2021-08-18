@@ -564,6 +564,7 @@ class Activity(commands.Cog):
     )
     async def rank_slash(self, ctx: SlashContext, expression: str):
         await ctx.defer()
+        expression = expression.strip()
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
