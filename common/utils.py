@@ -1,12 +1,12 @@
 """ Fonctions transverses """
 
 import re
-from typing import Optional
+from typing import List, Optional
 from configparser import ConfigParser
 from pathlib import Path
 
 CUSTOM_EMOJI = r"<a{0,1}:(\S+):(\d+)>"
-TRACKED_GUILD_IDS = []
+TRACKED_GUILD_IDS: List[int] = []
 config = ConfigParser(allow_no_value=True)
 p = Path(__file__).parent.parent
 config.read(p / "config.ini")
