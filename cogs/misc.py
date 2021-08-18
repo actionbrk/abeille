@@ -1,16 +1,7 @@
-import discord
 from discord.ext import commands
 from discord_slash import cog_ext, SlashContext
-import configparser
-import pathlib
 
-# TODO: guilds_ids is used by other cogs, may cause problems when reloading them
-guild_ids = []
-config = configparser.ConfigParser(allow_no_value=True)
-p = pathlib.Path(__file__).parent.parent
-config.read(p / "config.ini")
-for guild_id_str in config["Tracked"]:
-    guild_ids.append(int(guild_id_str))
+from abeille import guild_ids
 
 
 class Misc(commands.Cog):

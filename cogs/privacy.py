@@ -7,10 +7,10 @@ from discord.ext import commands
 from discord_slash import cog_ext
 from discord_slash.context import SlashContext
 from dotenv import load_dotenv
-from models.message import Message
 from peewee import DoesNotExist
 
-from cogs.misc import guild_ids
+from models.message import Message
+from abeille import guild_ids
 from cogs.tracking import get_tracking_cog
 
 # Chargement paramètres DB

@@ -15,14 +15,14 @@ from datawrapper import Datawrapper
 from discord.ext import commands
 from dotenv import load_dotenv
 from peewee import Select, fn
+from discord_slash import cog_ext, SlashContext
+from discord_slash.utils.manage_commands import create_option, create_choice
 
 from cogs.tracking import get_tracking_cog
 from common.checks import Maintenance
 from common.utils import emoji_to_str, str_input_ok
 from models.message import Message
-from discord_slash import cog_ext, SlashContext
-from discord_slash.utils.manage_commands import create_option, create_choice
-from cogs.misc import guild_ids
+from abeille import guild_ids
 
 PERIODE = 1100
 ROLLING_AVERAGE = 14
