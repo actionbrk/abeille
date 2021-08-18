@@ -1,5 +1,6 @@
 """ Commandes de tendances """
 
+import hashlib
 import io
 import os
 import textwrap
@@ -13,7 +14,7 @@ import plotly.graph_objects as go
 from datawrapper import Datawrapper
 from discord.ext import commands
 from dotenv import load_dotenv
-from peewee import fn
+from peewee import Select, fn
 
 from cogs.tracking import get_tracking_cog
 from common.checks import Maintenance
@@ -547,6 +548,66 @@ class Activity(commands.Cog):
             await ctx.send("Vous avez mal utilisé la commande ! 🐝")
         else:
             await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
+
+    @commands.max_concurrency(1, wait=True)
+    @cog_ext.cog_slash(
+        name="rank",
+        description="Votre classement dans l'utilisation d'une expression.",
+        guild_ids=guild_ids,
+        options=[
+            create_option(
+                name="expression",
+                description="Saisissez un mot ou une phrase.",
+                option_type=3,
+                required=True,
+            ),
+        ],
+    )
+    async def rank_slash(self, ctx: SlashContext, expression: str):
+        await ctx.defer()
+        author = ctx.author
+        author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(author.id).encode(), salt, iterations
+        ).hex()
+        guild_id = ctx.guild.id
+
+        tracking_cog = get_tracking_cog(self.bot)
+        db = tracking_cog.tracked_guilds[guild_id]
+
+        with db:
+            with db.bind_ctx([Message]):
+                rank_query = fn.rank().over(
+                    order_by=[fn.COUNT(Message.message_id).desc()]
+                )
+
+                subq = (
+                    Message.select(Message.author_id, rank_query.alias("rank"))
+                    .where(Message.content.contains(expression))
+                    .group_by(Message.author_id)
+                )
+
+                # Here we use a plain Select() to create our query.
+                query = (
+                    Select(columns=[subq.c.rank])
+                    .from_(subq)
+                    .where(subq.c.author_id == author_id)
+                    .bind(db)
+                )  # We must bind() it to the database.
+
+                rank = query.scalar()
+
+        if rank is None:
+            result = f"Vous n'avez jamais utilisé l'expression **'{expression}'**."
+        elif rank == 1:
+            result = f"🥇 Vous êtes le membre ayant le plus utilisé l'expression **'{expression}'**."
+        elif rank == 2:
+            result = f"🥈 Vous êtes le 2ème membre à avoir le plus utilisé l'expression **'{expression}'**."
+        elif rank == 3:
+            result = f"🥉 Vous êtes le 3ème membre à avoir le plus utilisé l'expression **'{expression}'**."
+        else:
+            result = f"Vous êtes le {rank}ème membre à avoir le plus utilisé l'expression **'{expression}'**."
+
+        await ctx.send(result)
 
 
 def setup(bot):
