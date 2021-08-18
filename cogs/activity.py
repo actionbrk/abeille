@@ -596,7 +596,7 @@ class Activity(commands.Cog):
                 rank = query.scalar()
 
         if rank is None:
-            result = f"Vous n'avez jamais employé l'expression **'{expression}'**."
+            result = f"Vous n'avez jamais employé l'expression *{expression}*."
         elif rank == 1:
             result = f"🥇 Vous êtes le membre ayant le plus employé l'expression *{expression}*."
         elif rank == 2:
