@@ -327,6 +327,7 @@ class Activity(commands.Cog):
 
         return fig.to_image(format="png", scale=2)
 
+    @commands.max_concurrency(1, wait=True)
     @cog_ext.cog_slash(
         name="trend",
         description="Dessiner la tendance d'une expression.",
@@ -377,6 +378,7 @@ class Activity(commands.Cog):
             await temp_msg.delete()
             await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
 
+    @commands.max_concurrency(1, wait=True)
     @cog_ext.cog_slash(
         name="compare",
         description="Comparer la tendance de deux expressions.",

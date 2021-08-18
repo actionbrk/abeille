@@ -82,6 +82,7 @@ class Privacy(commands.Cog):
         )
         await msg_bot.edit(content=" ".join(result))
 
+    @commands.max_concurrency(1, wait=True)
     @cog_ext.cog_slash(
         name="export",
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
