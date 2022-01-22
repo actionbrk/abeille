@@ -19,7 +19,7 @@ discord.py==1.7.3
 discord.py-stubs==1.7.3
 docopt==0.6.2
 idna==2.10
-ipython==7.22.0
+ipython==7.31.1
 ipython-genutils==0.2.0
 isort==5.8.0
 jedi==0.17.2
