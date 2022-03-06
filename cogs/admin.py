@@ -21,6 +21,8 @@ async def is_admin(ctx: commands.Context):
 
 
 class Admin(commands.Cog):
+    """Admin commands"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -28,13 +30,15 @@ class Admin(commands.Cog):
     @commands.guild_only()
     @commands.check(is_admin)
     async def check(self, ctx: commands.Context):
+        """Vérifie quels channels sont enregistrés"""
         assert ctx.guild is not None, "Impossible de récupérer la guild"
         await self._check(ctx, ctx.guild.id)
 
     @commands.command(name="recapid", aliases=["récapid"])
     @commands.guild_only()
-    @commands.check(is_admin)
+    @commands.is_owner()
     async def check_id(self, ctx: commands.Context, guild_id: int):
+        """Vérifie quels channels sont enregistrés (id)"""
         await self._check(ctx, guild_id)
 
     async def _check(self, ctx: commands.Context, guild_id: int):
@@ -63,7 +67,7 @@ class Admin(commands.Cog):
 
             try:
                 await channel.history(limit=10).flatten()
-            except discord.Forbidden as exc:
+            except discord.Forbidden as _exc:
                 nok_channels.append(f"⭕ {channel.name}")
                 continue
 

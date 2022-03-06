@@ -2,6 +2,8 @@ from discord.ext import commands
 
 
 class CogManager(commands.Cog):
+    """Manage cogs"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -13,8 +15,8 @@ class CogManager(commands.Cog):
 
         try:
             self.bot.load_extension(cog)
-        except Exception as e:
-            await ctx.send(f"**`ERROR:`** {type(e).__name__} - {e}")
+        except Exception as exc:
+            await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
             await ctx.send("**`SUCCESS`**")
 
@@ -26,8 +28,8 @@ class CogManager(commands.Cog):
 
         try:
             self.bot.unload_extension(cog)
-        except Exception as e:
-            await ctx.send(f"**`ERROR:`** {type(e).__name__} - {e}")
+        except Exception as exc:
+            await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
             await ctx.send("**`SUCCESS`**")
 
@@ -39,8 +41,8 @@ class CogManager(commands.Cog):
 
         try:
             self.bot.reload_extension(cog)
-        except Exception as e:
-            await ctx.send(f"**`ERROR:`** {type(e).__name__} - {e}")
+        except Exception as exc:
+            await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
             await ctx.send("**`SUCCESS`**")
 

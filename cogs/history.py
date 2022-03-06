@@ -23,12 +23,15 @@ class SaveResult:
 
 
 class History(commands.Cog):
+    """Save commands module"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @commands.command()
     @commands.is_owner()
     async def saveold(self, ctx: commands.Context, channel_id: int, count: int):
+        """Saves older messages in this channel"""
         tracking_cog = get_tracking_cog(self.bot)
         channel = self.bot.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
