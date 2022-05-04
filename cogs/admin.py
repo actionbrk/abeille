@@ -1,7 +1,8 @@
 """ Commandes d'administration """
 
-import discord
 import os
+
+import discord
 from discord.ext import commands
 
 from cogs.tracking import get_tracking_cog
@@ -106,5 +107,5 @@ class Admin(commands.Cog):
             await ctx.author.send("Seuls les admins peuvent exécuter cette commande. 🐝")
 
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))

@@ -11,16 +11,15 @@ import discord
 import pandas
 import plotly.express as px
 import plotly.graph_objects as go
+from common.checks import Maintenance
+from common.utils import emoji_to_str
+from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
-from peewee import Select, fn
-from discord_slash import cog_ext, SlashContext
-from discord_slash.utils.manage_commands import create_option, create_choice
+from models.message import Message, MessageIndex
+from peewee import SQL, Query, Select, fn
 
 from cogs.tracking import get_tracking_cog
-from common.checks import Maintenance
-from common.utils import TRACKED_GUILD_IDS, emoji_to_str
-from models.message import Message
 
 PERIODE = 1100
 ROLLING_AVERAGE = 14
@@ -47,14 +46,25 @@ class Activity(commands.Cog):
         guild_name = self.bot.get_guild(guild_id)
 
         with db:
-            with db.bind_ctx([Message]):
+            with db.bind_ctx([Message, MessageIndex]):
+                # subq: Query = MessageIndex.select(MessageIndex.rowid).where(
+                #     MessageIndex.match(terme)
+                # )
+
                 # Messages de l'utilisateur dans la période
-                query = (
+                query: Query = (
                     Message.select(
                         fn.DATE(Message.timestamp).alias("date"),
                         (
-                            fn.SUM(Message.content.contains(terme))
-                            / fn.COUNT(Message.message_id)
+                            fn.SUM(
+                                Message.message_id.in_(
+                                    SQL(
+                                        "(SELECT messageindex.rowid from messageindex where messageindex match ?)",
+                                        [terme],
+                                    )
+                                )
+                            )
+                            / fn.COUNT(Message.message_id).cast("REAL")
                         ).alias("messages"),
                     )
                     .where(fn.DATE(Message.timestamp) >= jour_debut)
@@ -62,16 +72,24 @@ class Activity(commands.Cog):
                     .group_by(fn.DATE(Message.timestamp))
                 )
 
+                # Alternative SQL brut (manque filtrage date)
+                # query = RawQuery(
+                #     "SELECT DATE(message.timestamp) AS date, sum(message.message_id in (select messageindex.rowid from messageindex where messageindex match ?))/CAST(COUNT(message.message_id) as real) as messages from message group by DATE(message.timestamp);",
+                #     params=([terme]),
+                # )
+
                 # Exécution requête SQL
-                cur = db.cursor()
-                query_sql = cur.mogrify(*query.sql())
-                df = pandas.read_sql(query_sql, db.connection())
+                # cur = db.cursor()
+                # query_sql = cur.mogrify(*query.sql())
+                query_sql, query_params = query.sql()
+                df = pandas.read_sql_query(
+                    query_sql, db.connection(), params=query_params
+                )
 
         # Remplir les dates manquantes
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
-        df.reset_index(level=0, inplace=True)
-        df = df.rename(columns={"index": "date"})
+        df = df.asfreq("D", fill_value=0)
 
         # Rolling average
         df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
@@ -86,7 +104,7 @@ class Activity(commands.Cog):
         title = "<br>".join(title_lines)
         fig: go.Figure = px.area(
             df,
-            x="date",
+            # x="date",
             y="messages",
             color_discrete_sequence=["yellow"],
             # line_shape="spline",
@@ -111,39 +129,52 @@ class Activity(commands.Cog):
 
         return fig.to_image(format="png", scale=2)
 
-    @cog_ext.cog_slash(
-        name="trend",
-        description="Dessiner la tendance d'une expression.",
-        guild_ids=TRACKED_GUILD_IDS,
-        options=[
-            create_option(
-                name="terme",
-                description="Saisissez un mot ou une phrase.",
-                option_type=3,
-                required=True,
-            ),
-            create_option(
-                name="periode",
-                description="Période de temps max sur laquelle dessiner la tendance.",
-                option_type=4,
-                required=True,
-                choices=[
-                    create_choice(name="6 mois", value=182),
-                    create_choice(name="1 an", value=365),
-                    create_choice(name="2 ans", value=730),
-                    create_choice(name="3 ans", value=1096),
-                ],
-            ),
-        ],
+    # @cog_ext.cog_slash(
+    #     name="trend",
+    #     description="Dessiner la tendance d'une expression.",
+    #     guild_ids=TRACKED_GUILD_IDS,
+    #     options=[
+    #         create_option(
+    #             name="terme",
+    #             description="Saisissez un mot ou une phrase.",
+    #             option_type=3,
+    #             required=True,
+    #         ),
+    #         create_option(
+    #             name="periode",
+    #             description="Période de temps max sur laquelle dessiner la tendance.",
+    #             option_type=4,
+    #             required=True,
+    #             choices=[
+    #                 create_choice(name="6 mois", value=182),
+    #                 create_choice(name="1 an", value=365),
+    #                 create_choice(name="2 ans", value=730),
+    #                 create_choice(name="3 ans", value=1096),
+    #             ],
+    #         ),
+    #     ],
+    # )
+    @app_commands.command(name="trend", description="test")
+    @app_commands.describe(
+        terme="The first value you want to add something to",
+        periode="The value you want to add to the first value",
     )
-    async def trend_slash(self, ctx: SlashContext, terme: str, periode: int):
-        await ctx.defer()
-        guild_id = ctx.guild.id
+    async def trend_slash(
+        self, interaction: discord.Interaction, terme: str, periode: int
+    ):
+        await interaction.response.defer()
+        guild_id = interaction.guild_id
+
+        if not guild_id:
+            await interaction.response.send_message("Can't find guild id.")
+            return
 
         img = await self._get_trend_img(guild_id, terme, periode)
 
         # Envoyer image
-        await ctx.send(file=discord.File(io.BytesIO(img), "abeille.png"))
+        await interaction.response.send_message(
+            file=discord.File(io.BytesIO(img), "abeille.png")
+        )
 
     @commands.command(name="trendid")
     @commands.max_concurrency(1, wait=True)
@@ -161,47 +192,63 @@ class Activity(commands.Cog):
             await temp_msg.delete()
             await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
 
-    @cog_ext.cog_slash(
-        name="compare",
-        description="Comparer la tendance de deux expressions.",
-        guild_ids=TRACKED_GUILD_IDS,
-        options=[
-            create_option(
-                name="expression1",
-                description="Saisissez un mot ou une phrase.",
-                option_type=3,
-                required=True,
-            ),
-            create_option(
-                name="expression2",
-                description="Saisissez un mot ou une phrase.",
-                option_type=3,
-                required=True,
-            ),
-            create_option(
-                name="periode",
-                description="Période de temps max sur laquelle dessiner la tendance.",
-                option_type=4,
-                required=True,
-                choices=[
-                    create_choice(name="6 mois", value=182),
-                    create_choice(name="1 an", value=365),
-                    create_choice(name="2 ans", value=730),
-                    create_choice(name="3 ans", value=1096),
-                ],
-            ),
-        ],
+    # @cog_ext.cog_slash(
+    #     name="compare",
+    #     description="Comparer la tendance de deux expressions.",
+    #     guild_ids=TRACKED_GUILD_IDS,
+    #     options=[
+    #         create_option(
+    #             name="expression1",
+    #             description="Saisissez un mot ou une phrase.",
+    #             option_type=3,
+    #             required=True,
+    #         ),
+    #         create_option(
+    #             name="expression2",
+    #             description="Saisissez un mot ou une phrase.",
+    #             option_type=3,
+    #             required=True,
+    #         ),
+    #         create_option(
+    #             name="periode",
+    #             description="Période de temps max sur laquelle dessiner la tendance.",
+    #             option_type=4,
+    #             required=True,
+    #             choices=[
+    #                 create_choice(name="6 mois", value=182),
+    #                 create_choice(name="1 an", value=365),
+    #                 create_choice(name="2 ans", value=730),
+    #                 create_choice(name="3 ans", value=1096),
+    #             ],
+    #         ),
+    #     ],
+    # )
+    @app_commands.command(name="compare", description="test")
+    @app_commands.describe(
+        expression1="The first value you want to add something to",
+        expression2="The value you want to add to the first value",
+        periode="Période",
     )
     async def compare_slash(
-        self, ctx: SlashContext, expression1: str, expression2: str, periode: int
+        self,
+        interaction: discord.Interaction,
+        expression1: str,
+        expression2: str,
+        periode: int,
     ):
-        await ctx.defer()
-        guild_id = ctx.guild.id
+        await interaction.response.defer()
+        guild_id = interaction.guild_id
+
+        if not guild_id:
+            await interaction.response.send_message("Can't find guild id.")
+            return
 
         img = await self._get_compare_img(guild_id, expression1, expression2, periode)
 
         # Envoyer image
-        await ctx.send(file=discord.File(io.BytesIO(img), "abeille.png"))
+        await interaction.response.send_message(
+            file=discord.File(io.BytesIO(img), "abeille.png")
+        )
 
     async def _get_compare_img(
         self, guild_id: int, expression1: str, expression2: str, periode: int
@@ -333,28 +380,35 @@ class Activity(commands.Cog):
         else:
             await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
 
-    @commands.max_concurrency(1, wait=True)
-    @cog_ext.cog_slash(
-        name="rank",
-        description="Votre classement dans l'utilisation d'une expression.",
-        guild_ids=TRACKED_GUILD_IDS,
-        options=[
-            create_option(
-                name="expression",
-                description="Saisissez un mot ou une phrase.",
-                option_type=3,
-                required=True,
-            ),
-        ],
+    # @commands.max_concurrency(1, wait=True)
+    # @cog_ext.cog_slash(
+    #     name="rank",
+    #     description="Votre classement dans l'utilisation d'une expression.",
+    #     guild_ids=TRACKED_GUILD_IDS,
+    #     options=[
+    #         create_option(
+    #             name="expression",
+    #             description="Saisissez un mot ou une phrase.",
+    #             option_type=3,
+    #             required=True,
+    #         ),
+    #     ],
+    # )
+    @app_commands.command(name="rank", description="test")
+    @app_commands.describe(
+        expression="The first value you want to add something to",
     )
-    async def rank_slash(self, ctx: SlashContext, expression: str):
-        await ctx.defer()
+    async def rank_slash(self, interaction: discord.Interaction, expression: str):
+        await interaction.response.defer()
         expression = expression.strip()
-        author = ctx.author
+        author = interaction.user
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
         ).hex()
-        guild_id = ctx.guild.id
+        guild_id = interaction.guild_id
+        if not guild_id:
+            await interaction.response.send_message("Can't find guild id.")
+            return
 
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
@@ -392,8 +446,8 @@ class Activity(commands.Cog):
         else:
             result = f"Vous êtes le **{rank}ème** membre à avoir le plus employé l'expression *{expression}*."
 
-        await ctx.send(result)
+        await interaction.response.send_message(result)
 
 
-def setup(bot):
-    bot.add_cog(Activity(bot))
+async def setup(bot):
+    await bot.add_cog(Activity(bot))

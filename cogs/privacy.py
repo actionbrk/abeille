@@ -1,12 +1,10 @@
-from common.utils import TRACKED_GUILD_IDS
 import csv
 import hashlib
 import os
 
 import discord
 from discord.ext import commands
-from discord_slash import cog_ext
-from discord_slash.context import SlashContext
+from discord import app_commands
 from dotenv import load_dotenv
 from peewee import DoesNotExist
 
@@ -82,12 +80,11 @@ class Privacy(commands.Cog):
         )
         await msg_bot.edit(content=" ".join(result))
 
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name="export",
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
-        guild_ids=TRACKED_GUILD_IDS,
     )
-    async def export_slash(self, ctx: SlashContext):
+    async def export_slash(self, interaction: discord.Interaction):
         await ctx.defer()
         author = ctx.author
         author_id = hashlib.pbkdf2_hmac(
@@ -188,5 +185,5 @@ class Privacy(commands.Cog):
         await ctx.author.send("Je viens de supprimer ce message de ma ruche 🐝")
 
 
-def setup(bot):
-    bot.add_cog(Privacy(bot))
+async def setup(bot):
+    await bot.add_cog(Privacy(bot))

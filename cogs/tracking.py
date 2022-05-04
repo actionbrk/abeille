@@ -9,14 +9,12 @@ from typing import Dict, List, Optional
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from models.message import Message
-from peewee import Database, DoesNotExist, MySQLDatabase, OperationalError
+from models.message import Message, MessageIndex
+from peewee import Database, DoesNotExist, OperationalError
+from playhouse.sqlite_ext import SqliteExtDatabase
 
 # Chargement .env
 load_dotenv()
-db_host = os.getenv("DB_HOST")
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore
@@ -54,6 +52,8 @@ def get_tracking_cog(bot: commands.Bot) -> "Tracking":
 
 
 class Tracking(commands.Cog):
+    """Tracking module"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -76,14 +76,8 @@ class Tracking(commands.Cog):
         for guild_id_str in config["Tracked"]:
             guild_id = int(guild_id_str)
 
-            new_db = MySQLDatabase(
-                f"{guild_id}_db",
-                host=db_host,
-                user=db_user,
-                password=db_password,
-                charset="utf8mb4",
-                autoconnect=False,
-            )
+            # TODO: Custom db folder path (outside of project folder....)
+            new_db = SqliteExtDatabase(p / "db" / f"{guild_id}.db")
 
             try:
                 new_db.connect()
@@ -96,8 +90,28 @@ class Tracking(commands.Cog):
 
             # Création tables
             with new_db:
-                with new_db.bind_ctx([Message]):
-                    new_db.create_tables([Message])
+                with new_db.bind_ctx([Message, MessageIndex]):
+                    # Création tables
+                    new_db.create_tables([Message, MessageIndex])
+                    # Création triggers
+                    try:
+                        new_db.execute_sql(
+                            "CREATE TRIGGER message_ad AFTER DELETE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content); END;"
+                        )
+                        new_db.execute_sql(
+                            """CREATE TRIGGER message_ai AFTER INSERT ON message BEGIN
+                            INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content);
+                            END;"""
+                        )
+                        new_db.execute_sql(
+                            """CREATE TRIGGER message_au AFTER UPDATE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content);
+                            INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content); END;"""
+                        )
+                    except Exception as exc:
+                        print("Les triggers n'ont pas pu être créés :", exc)
+
+                    # TODO: Commande dédiée ? MessageIndex.rebuild()
+                    # TODO: Commande dédiée ? MessageIndex.optimize()
 
             print(f"Guild {guild_id} trackée")
 
@@ -213,5 +227,5 @@ class Tracking(commands.Cog):
                     msg.save(force_insert=True)
 
 
-def setup(bot):
-    bot.add_cog(Tracking(bot))
+async def setup(bot):
+    await bot.add_cog(Tracking(bot))

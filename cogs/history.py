@@ -7,8 +7,8 @@ from discord.abc import Snowflake
 from discord.ext import commands
 from peewee import Database, DoesNotExist
 
-from cogs.tracking import get_message, get_tracking_cog
 from models.message import Message
+from cogs.tracking import get_message, get_tracking_cog
 
 
 class SaveResult:
@@ -206,22 +206,26 @@ class History(commands.Cog):
 
         save_result = SaveResult()
 
-        async for message in channel.history(
-            limit=count,
-            before=before,
-            after=after,
-            around=around,
-            oldest_first=oldest_first,
-        ):
-            save_result.trouves += 1
+        with db:
+            with db.bind_ctx([Message]):
+                async for message in channel.history(
+                    limit=count,
+                    before=before,
+                    after=after,
+                    around=around,
+                    oldest_first=oldest_first,
+                ):
+                    save_result.trouves += 1
 
-            # Ignorer messages bot
-            if message.author.bot:
-                save_result.from_bot += 1
-                continue
+                    # Progress
+                    if save_result.trouves % 500 == 0:
+                        print(f"{save_result.trouves} / {count}")
 
-            with db:
-                with db.bind_ctx([Message]):
+                    # Ignorer messages bot
+                    if message.author.bot:
+                        save_result.from_bot += 1
+                        continue
+
                     # Vérifier si le message existe avant d'enregistrer
                     # TODO: Plutôt faire select().count() ?
                     try:
@@ -255,5 +259,5 @@ class History(commands.Cog):
         return known_channels
 
 
-def setup(bot):
-    bot.add_cog(History(bot))
+async def setup(bot):
+    await bot.add_cog(History(bot))

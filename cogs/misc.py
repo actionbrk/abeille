@@ -1,20 +1,16 @@
-from common.utils import TRACKED_GUILD_IDS
+import discord
+from discord import app_commands
 from discord.ext import commands
-from discord_slash import cog_ext, SlashContext
 
 
 class Misc(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @cog_ext.cog_slash(
-        name="bzz", description="Bzz bzz (ping) ! 🐝", guild_ids=TRACKED_GUILD_IDS
-    )
-    async def ping(self, ctx: SlashContext):
-        await ctx.send(
-            f"Je fonctionne (avec une latence de {self.bot.latency*1000:.0f}ms) ! 🐝"
-        )
+    @app_commands.command(name="bzz", description="Bzz bzz (ping) ! 🐝")
+    async def ping(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Je fonctionne ! 🐝")
 
 
-def setup(bot):
-    bot.add_cog(Misc(bot))
+async def setup(bot):
+    await bot.add_cog(Misc(bot))
