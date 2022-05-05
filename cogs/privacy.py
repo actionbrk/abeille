@@ -12,7 +12,7 @@ from models.message import Message
 from cogs.tracking import get_tracking_cog
 
 # Chargement paramètres DB
-load_dotenv()
+# load_dotenv()
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore

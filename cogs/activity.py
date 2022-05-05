@@ -24,8 +24,6 @@ from cogs.tracking import get_tracking_cog
 PERIODE = 1100
 ROLLING_AVERAGE = 14
 
-# Chargement .env
-load_dotenv()
 token = os.getenv("DW_TOKEN")
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore

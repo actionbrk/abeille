@@ -2,6 +2,7 @@
 
 import configparser
 import hashlib
+import logging
 import os
 import pathlib
 from typing import Dict, List, Optional
@@ -14,10 +15,11 @@ from peewee import Database, DoesNotExist, OperationalError
 from playhouse.sqlite_ext import SqliteExtDatabase
 
 # Chargement .env
-load_dotenv()
+# load_dotenv()
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore
+dbs_folder_path = os.getenv("DBS_FOLDER_PATH")
 
 
 def get_message(message: discord.Message) -> Message:
@@ -69,21 +71,21 @@ class Tracking(commands.Cog):
 
     def _load_tracked_guilds(self):
         """Charger les guilds à tracker et les channels à ignorer"""
+        logging.info("Loading tracked guilds...")
         config = configparser.ConfigParser(allow_no_value=True)
         p = pathlib.Path(__file__).parent.parent
         config.read(p / "config.ini")
-        print("Chargement des guilds trackées...")
         for guild_id_str in config["Tracked"]:
             guild_id = int(guild_id_str)
 
             # TODO: Custom db folder path (outside of project folder....)
-            new_db = SqliteExtDatabase(p / "db" / f"{guild_id}.db")
+            new_db = SqliteExtDatabase(pathlib.Path(dbs_folder_path) / f"{guild_id}.db")
 
             try:
                 new_db.connect()
                 self.tracked_guilds[guild_id] = new_db
             except OperationalError:
-                print(f"Base de données indisponible pour {guild_id}")
+                logging.error("Base de données indisponible pour %s", guild_id_str)
                 continue
             finally:
                 new_db.close()
@@ -108,18 +110,18 @@ class Tracking(commands.Cog):
                             INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content); END;"""
                         )
                     except Exception as exc:
-                        print("Les triggers n'ont pas pu être créés :", exc)
+                        logging.warning("Triggers could not be created: %s", exc)
 
                     # TODO: Commande dédiée ? MessageIndex.rebuild()
                     # TODO: Commande dédiée ? MessageIndex.optimize()
 
-            print(f"Guild {guild_id} trackée")
+            logging.info("Guild '%s' is tracked.", guild_id_str)
 
         total_tracked = len(self.tracked_guilds)
-        print(total_tracked, "guild(s) trackée(s)")
+        logging.info("%d guild(s) are being tracked.", total_tracked)
 
         # Ignorer channels
-        print("Chargement des channels ignorés...")
+        logging.info("Loading ignored guilds...")
         for section in config.sections():
             try:
                 section_int = int(section)
@@ -129,7 +131,7 @@ class Tracking(commands.Cog):
                 for channel_id_str in config[section]:
                     channel_id = int(channel_id_str)
                     self.ignored_channels.append(channel_id)
-                    print(f"{channel_id} ignoré")
+                    logging.info("Channel '%d' is ignored.", channel_id)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

@@ -11,7 +11,10 @@ from dotenv import load_dotenv
 
 from common.utils import DEV_GUILD
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s (%(name)s %(module)s) %(message)s",
+)
 
 # TODO: LOGGING PEEWEE
 # logger = logging.getLogger("peewee")
@@ -25,11 +28,6 @@ discord_token = os.getenv("DISCORD_TOKEN")
 if discord_token is None:
     sys.exit("DISCORD_TOKEN introuvable")
 
-application_id = os.getenv("APPLICATION_ID")
-
-if application_id is None:
-    sys.exit("DISCORD_TOKEN introuvable")
-
 COGS_DIR = "cogs"
 DESCRIPTION = "Abeille"
 intents = discord.Intents.default()
@@ -38,18 +36,15 @@ intents = discord.Intents.default()
 class AbeilleBot(commands.Bot):
     """Abeille Bot"""
 
-    async def setup_hook(self):
-        print("setup hook")
-
     async def on_ready(self):
-        print("A")
+        logging.info("Syncing commands...")
         # for command in self.tree.walk_commands(guild=DEV_GUILD):
         #     print("command:", command.name)
         # TODO: sync_commands function in common/utils.py
         self.tree.copy_global_to(guild=DEV_GUILD)
         await self.tree.sync(guild=DEV_GUILD)
         await self.tree.sync()
-        print("B")
+        logging.info("Commands synced.")
 
 
 async def main():
@@ -60,7 +55,6 @@ async def main():
         description=DESCRIPTION,
         help_command=None,
         intents=intents,
-        application_id=int(application_id),
     )
 
     async with bot:
@@ -68,17 +62,21 @@ async def main():
         for extension in [
             f.name.replace(".py", "") for f in p.iterdir() if f.is_file()
         ]:
-            try:
-                if extension != "__init__":
-                    try:
-                        await bot.load_extension(COGS_DIR + "." + extension)
-                    except commands.ExtensionFailed as err:
-                        print("Extension loading failed", err.name, err.original)
-                        raise
-                    print(extension, " loaded")
-            except (discord.ClientException, ModuleNotFoundError):
-                print(f"Failed to load extension {extension}.")
-                traceback.print_exc()
+            if extension != "__init__":
+                try:
+                    await bot.load_extension(COGS_DIR + "." + extension)
+                    logging.info("'%s' extension loaded", extension)
+                except commands.ExtensionFailed as err:
+                    logging.error(
+                        "'%s' extension loading failed: %s %s",
+                        extension,
+                        err.name,
+                        err.original,
+                    )
+                    raise
+                except (discord.ClientException, ModuleNotFoundError):
+                    logging.error("Failed to load extension '%s'.", extension)
+                    raise
 
         await bot.start(discord_token)
 
