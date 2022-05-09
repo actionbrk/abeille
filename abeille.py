@@ -31,6 +31,7 @@ if discord_token is None:
 COGS_DIR = "cogs"
 DESCRIPTION = "Abeille"
 intents = discord.Intents.default()
+intents.message_content = True
 
 
 class AbeilleBot(commands.Bot):

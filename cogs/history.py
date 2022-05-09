@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 from typing import List, Union
 
@@ -219,7 +220,7 @@ class History(commands.Cog):
 
                     # Progress
                     if save_result.trouves % 500 == 0:
-                        print(f"{save_result.trouves} / {count}")
+                        logging.info(f"{save_result.trouves} / {count}")
 
                     # Ignorer messages bot
                     if message.author.bot:
