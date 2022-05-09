@@ -160,17 +160,17 @@ class Activity(commands.Cog):
     async def trend_slash(
         self, interaction: discord.Interaction, terme: str, periode: int
     ):
-        await interaction.response.defer()
+        await interaction.response.defer(thinking=True)
         guild_id = interaction.guild_id
 
         if not guild_id:
-            await interaction.response.send_message("Can't find guild id.")
+            await interaction.followup.send("Can't find guild id.")
             return
 
         img = await self._get_trend_img(guild_id, terme, periode)
 
         # Envoyer image
-        await interaction.response.send_message(
+        await interaction.followup.send(
             file=discord.File(io.BytesIO(img), "abeille.png")
         )
 
@@ -234,17 +234,17 @@ class Activity(commands.Cog):
         expression2: str,
         periode: int,
     ):
-        await interaction.response.defer()
+        await interaction.response.defer(thinking=True)
         guild_id = interaction.guild_id
 
         if not guild_id:
-            await interaction.response.send_message("Can't find guild id.")
+            await interaction.followup.send("Can't find guild id.")
             return
 
         img = await self._get_compare_img(guild_id, expression1, expression2, periode)
 
         # Envoyer image
-        await interaction.response.send_message(
+        await interaction.followup.send(
             file=discord.File(io.BytesIO(img), "abeille.png")
         )
 
@@ -397,7 +397,7 @@ class Activity(commands.Cog):
         expression="The first value you want to add something to",
     )
     async def rank_slash(self, interaction: discord.Interaction, expression: str):
-        await interaction.response.defer()
+        await interaction.response.defer(thinking=True)
         expression = expression.strip()
         author = interaction.user
         author_id = hashlib.pbkdf2_hmac(
@@ -405,7 +405,7 @@ class Activity(commands.Cog):
         ).hex()
         guild_id = interaction.guild_id
         if not guild_id:
-            await interaction.response.send_message("Can't find guild id.")
+            await interaction.followup.send("Can't find guild id.")
             return
 
         tracking_cog = get_tracking_cog(self.bot)
@@ -444,7 +444,7 @@ class Activity(commands.Cog):
         else:
             result = f"Vous êtes le **{rank}ème** membre à avoir le plus employé l'expression *{expression}*."
 
-        await interaction.response.send_message(result)
+        await interaction.followup.send(result)
 
 
 async def setup(bot):
