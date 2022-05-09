@@ -3,7 +3,6 @@ import logging
 import os
 import pathlib
 import sys
-import traceback
 
 import discord
 from discord.ext import commands
@@ -38,14 +37,7 @@ class AbeilleBot(commands.Bot):
     """Abeille Bot"""
 
     async def on_ready(self):
-        logging.info("Syncing commands...")
-        # for command in self.tree.walk_commands(guild=DEV_GUILD):
-        #     print("command:", command.name)
-        # TODO: sync_commands function in common/utils.py
-        self.tree.copy_global_to(guild=DEV_GUILD)
-        await self.tree.sync(guild=DEV_GUILD)
-        await self.tree.sync()
-        logging.info("Commands synced.")
+        logging.info("Ready!")
 
 
 async def main():
