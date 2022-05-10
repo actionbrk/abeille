@@ -27,6 +27,18 @@ class Misc(commands.Cog):
         """Sync commands globally"""
         await self._sync_commands(guild=DEV_GUILD)
 
+    @commands.command()
+    @commands.is_owner()
+    async def clear(self, ctx: commands.Context):
+        """Sync commands globally"""
+        await self._clear_commands()
+
+    @commands.command()
+    @commands.is_owner()
+    async def cleardev(self, ctx: commands.Context):
+        """Sync commands globally"""
+        await self._clear_commands(guild=DEV_GUILD)
+
     async def _sync_commands(self, *, guild: Optional[discord.abc.Snowflake] = None):
         """Synchronize commands (to guild or globally)"""
         logging.info("Syncing commands...")
@@ -35,6 +47,13 @@ class Misc(commands.Cog):
             await self.bot.tree.sync(guild=guild)
         else:
             await self.bot.tree.sync()
+        logging.info("Commands synced.")
+
+    async def _clear_commands(self, *, guild: Optional[discord.abc.Snowflake] = None):
+        """Clear and synchronize commands (to guild or globally)"""
+        logging.info("Clearing and syncing commands...")
+        self.bot.tree.clear_commands(guild=guild)
+        await self.bot.tree.sync(guild=guild)
         logging.info("Commands synced.")
 
 

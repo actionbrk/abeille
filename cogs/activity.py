@@ -2,6 +2,7 @@
 
 import hashlib
 import io
+import logging
 import os
 import textwrap
 from datetime import date, timedelta
@@ -79,11 +80,15 @@ class Activity(commands.Cog):
                 # Exécution requête SQL
                 # cur = db.cursor()
                 # query_sql = cur.mogrify(*query.sql())
+
+                logging.info("Executing database request...")
                 query_sql, query_params = query.sql()
                 df = pandas.read_sql_query(
                     query_sql, db.connection(), params=query_params
                 )
+                logging.info("Database request answered.")
 
+        logging.info("Processing data and creating graph...")
         # Remplir les dates manquantes
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
@@ -124,6 +129,7 @@ class Activity(commands.Cog):
                 opacity=0.8,
             )
         )
+        logging.info("Data processed and graph created. Exporting to image...")
 
         return fig.to_image(format="png", scale=2)
 
@@ -152,10 +158,12 @@ class Activity(commands.Cog):
     #         ),
     #     ],
     # )
-    @app_commands.command(name="trend", description="test")
+    @app_commands.command(
+        name="trend", description="Dessiner la tendance d'une expression."
+    )
     @app_commands.describe(
-        terme="The first value you want to add something to",
-        periode="The value you want to add to the first value",
+        terme="Le mot ou l'expression à rechercher.",
+        periode="Période de temps max sur laquelle dessiner la tendance.",
     )
     async def trend_slash(
         self, interaction: discord.Interaction, terme: str, periode: int
@@ -170,9 +178,11 @@ class Activity(commands.Cog):
         img = await self._get_trend_img(guild_id, terme, periode)
 
         # Envoyer image
+        logging.info("Sending image to client...")
         await interaction.followup.send(
             file=discord.File(io.BytesIO(img), "abeille.png")
         )
+        logging.info("Image sent to client.")
 
     @commands.command(name="trendid")
     @commands.max_concurrency(1, wait=True)

@@ -9,7 +9,6 @@ from typing import Dict, List, Optional
 
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
 from models.message import Message, MessageIndex
 from peewee import Database, DoesNotExist, OperationalError
 from playhouse.sqlite_ext import SqliteExtDatabase

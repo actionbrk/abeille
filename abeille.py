@@ -17,7 +17,7 @@ logging.basicConfig(
 
 # TODO: LOGGING PEEWEE
 # logger = logging.getLogger("peewee")
-# Inutile? (double log) : logger.addHandler(logging.StreamHandler())
+# logger.addHandler(logging.StreamHandler())
 # logger.setLevel(logging.DEBUG)
 
 load_dotenv()
