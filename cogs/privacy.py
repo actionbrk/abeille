@@ -85,12 +85,20 @@ class Privacy(commands.Cog):
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
     )
     async def export_slash(self, interaction: discord.Interaction):
-        await ctx.defer()
-        author = ctx.author
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        # TODO: Temporarily disabled
+        await interaction.followup.send(
+            "Cette commande est momentanément indisponible. Rendez-vous sur https://kutt.it/Abeille pour plus d'infos. 🐝",
+            ephemeral=True,
+        )
+        return
+
+        author = interaction.user
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
         ).hex()
-        guild = ctx.guild
+        guild = interaction.guild
 
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild.id]
@@ -118,17 +126,21 @@ class Privacy(commands.Cog):
             "L'ID du message est la première information de chaque",
             "ligne du fichier que j'ai envoyé 🐝",
         )
-        await ctx.author.send(
+
+        # TODO: Envoyer par MP
+        await interaction.followup.user.send(
             " ".join(result),
             file=discord.File(temp_csv_path),
         )
         os.remove(temp_csv_path)
 
-        await ctx.send(
+        # TODO: Envoyer en ephemeral
+        await interaction.followup.send(
             "Les données vous concernant vous ont été envoyées par message privé. 🐝",
-            hidden=True,
+            ephemeral=True,
         )
 
+    # TODO: Slash command
     @commands.command()
     @commands.guild_only()
     async def delete(self, ctx: commands.Context, message_id: int):
