@@ -21,7 +21,6 @@ class CogManager(commands.Cog):
 
         try:
             await self.bot.load_extension(cog)
-            await self._sync_commands()
         except Exception as exc:
             await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
@@ -35,7 +34,6 @@ class CogManager(commands.Cog):
 
         try:
             await self.bot.unload_extension(cog)
-            await self._sync_commands()
         except Exception as exc:
             await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
@@ -49,7 +47,6 @@ class CogManager(commands.Cog):
 
         try:
             await self.bot.reload_extension(cog)
-            await self._sync_commands()
         except Exception as exc:
             await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
@@ -66,15 +63,6 @@ class CogManager(commands.Cog):
     async def cogs(self, ctx):
         for cog_name, _cog in self.bot.cogs.items():
             await ctx.send(cog_name)
-
-    # TODO: sync_commands function in common/utils.py
-    async def _sync_commands(self):
-        """Sync commands"""
-        # Sync to dev guild
-        self.bot.tree.copy_global_to(guild=DEV_GUILD)
-        await self.bot.tree.sync(guild=DEV_GUILD)
-        # Sync globally
-        await self.bot.tree.sync()
 
 
 async def setup(bot):
