@@ -92,7 +92,7 @@ class Activity(commands.Cog):
         # Remplir les dates manquantes
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
-        df = df.asfreq("D", fill_value=0)
+        # df = df.asfreq("D", fill_value=0)
 
         # Rolling average
         df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
@@ -275,11 +275,11 @@ class Activity(commands.Cog):
                         fn.DATE(Message.timestamp).alias("date"),
                         (
                             fn.SUM(Message.content.contains(expression1))
-                            / fn.COUNT(Message.message_id)
+                            / fn.COUNT(Message.message_id).cast("REAL")
                         ).alias("expression1"),
                         (
                             fn.SUM(Message.content.contains(expression2))
-                            / fn.COUNT(Message.message_id)
+                            / fn.COUNT(Message.message_id).cast("REAL")
                         ).alias("expression2"),
                     )
                     .where(fn.DATE(Message.timestamp) >= jour_debut)
@@ -287,9 +287,12 @@ class Activity(commands.Cog):
                     .group_by(fn.DATE(Message.timestamp))
                 )
 
-                cur = db.cursor()
-                query_sql = cur.mogrify(*query.sql())
-                df = pandas.read_sql(query_sql, db.connection())
+                logging.info("Executing database request...")
+                query_sql, query_params = query.sql()
+                df = pandas.read_sql_query(
+                    query_sql, db.connection(), params=query_params
+                )
+                logging.info("Database request answered.")
 
         # Si emote custom : simplifier le nom pour titre DW
         custom_emoji_str = emoji_to_str(expression1)
@@ -305,8 +308,6 @@ class Activity(commands.Cog):
         # Remplir les dates manquantes
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
-        df.reset_index(level=0, inplace=True)
-        df = df.rename(columns={"index": "date"})
 
         # Rolling average
         df[expression1] = df.get(expression1).rolling(ROLLING_AVERAGE).mean()
@@ -317,7 +318,6 @@ class Activity(commands.Cog):
         title = "<br>".join(title_lines)
         fig: go.Figure = px.line(
             df,
-            x="date",
             y=[expression1, expression2],
             color_discrete_sequence=["yellow", "#4585e6"],
             template="plotly_dark",
