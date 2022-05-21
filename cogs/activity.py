@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 from common.checks import Maintenance
 from common.utils import emoji_to_str
 from discord import app_commands
+from discord.app_commands import Choice
 from discord.ext import commands
 from dotenv import load_dotenv
 from models.message import Message, MessageIndex
@@ -133,31 +134,6 @@ class Activity(commands.Cog):
 
         return fig.to_image(format="png", scale=2)
 
-    # @cog_ext.cog_slash(
-    #     name="trend",
-    #     description="Dessiner la tendance d'une expression.",
-    #     guild_ids=TRACKED_GUILD_IDS,
-    #     options=[
-    #         create_option(
-    #             name="terme",
-    #             description="Saisissez un mot ou une phrase.",
-    #             option_type=3,
-    #             required=True,
-    #         ),
-    #         create_option(
-    #             name="periode",
-    #             description="Période de temps max sur laquelle dessiner la tendance.",
-    #             option_type=4,
-    #             required=True,
-    #             choices=[
-    #                 create_choice(name="6 mois", value=182),
-    #                 create_choice(name="1 an", value=365),
-    #                 create_choice(name="2 ans", value=730),
-    #                 create_choice(name="3 ans", value=1096),
-    #             ],
-    #         ),
-    #     ],
-    # )
     @app_commands.command(
         name="trend", description="Dessiner la tendance d'une expression."
     )
@@ -165,8 +141,16 @@ class Activity(commands.Cog):
         terme="Le mot ou l'expression à rechercher.",
         periode="Période de temps max sur laquelle dessiner la tendance.",
     )
+    @app_commands.choices(
+        periode=[
+            Choice(name="6 mois", value=182),
+            Choice(name="1 an", value=365),
+            Choice(name="2 ans", value=730),
+            Choice(name="3 ans", value=1096),
+        ]
+    )
     async def trend_slash(
-        self, interaction: discord.Interaction, terme: str, periode: int
+        self, interaction: discord.Interaction, terme: str, periode: Choice[int]
     ):
         await interaction.response.defer(thinking=True)
         guild_id = interaction.guild_id
@@ -175,7 +159,7 @@ class Activity(commands.Cog):
             await interaction.followup.send("Can't find guild id.")
             return
 
-        img = await self._get_trend_img(guild_id, terme, periode)
+        img = await self._get_trend_img(guild_id, terme, periode.value)
 
         # Envoyer image
         logging.info("Sending image to client...")
@@ -200,49 +184,28 @@ class Activity(commands.Cog):
             await temp_msg.delete()
             await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
 
-    # @cog_ext.cog_slash(
-    #     name="compare",
-    #     description="Comparer la tendance de deux expressions.",
-    #     guild_ids=TRACKED_GUILD_IDS,
-    #     options=[
-    #         create_option(
-    #             name="expression1",
-    #             description="Saisissez un mot ou une phrase.",
-    #             option_type=3,
-    #             required=True,
-    #         ),
-    #         create_option(
-    #             name="expression2",
-    #             description="Saisissez un mot ou une phrase.",
-    #             option_type=3,
-    #             required=True,
-    #         ),
-    #         create_option(
-    #             name="periode",
-    #             description="Période de temps max sur laquelle dessiner la tendance.",
-    #             option_type=4,
-    #             required=True,
-    #             choices=[
-    #                 create_choice(name="6 mois", value=182),
-    #                 create_choice(name="1 an", value=365),
-    #                 create_choice(name="2 ans", value=730),
-    #                 create_choice(name="3 ans", value=1096),
-    #             ],
-    #         ),
-    #     ],
-    # )
-    @app_commands.command(name="compare", description="test")
+    @app_commands.command(
+        name="compare", description="Comparer la tendance de deux expressions."
+    )
     @app_commands.describe(
-        expression1="The first value you want to add something to",
-        expression2="The value you want to add to the first value",
-        periode="Période",
+        expression1="Saisissez un mot ou une phrase.",
+        expression2="Saisissez un mot ou une phrase.",
+        periode="Période de temps max sur laquelle dessiner la tendance.",
+    )
+    @app_commands.choices(
+        periode=[
+            Choice(name="6 mois", value=182),
+            Choice(name="1 an", value=365),
+            Choice(name="2 ans", value=730),
+            Choice(name="3 ans", value=1096),
+        ]
     )
     async def compare_slash(
         self,
         interaction: discord.Interaction,
         expression1: str,
         expression2: str,
-        periode: int,
+        periode: Choice[int],
     ):
         await interaction.response.defer(thinking=True)
         guild_id = interaction.guild_id
@@ -251,7 +214,9 @@ class Activity(commands.Cog):
             await interaction.followup.send("Can't find guild id.")
             return
 
-        img = await self._get_compare_img(guild_id, expression1, expression2, periode)
+        img = await self._get_compare_img(
+            guild_id, expression1, expression2, periode.value
+        )
 
         # Envoyer image
         await interaction.followup.send(
@@ -388,23 +353,11 @@ class Activity(commands.Cog):
         else:
             await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
 
-    # @commands.max_concurrency(1, wait=True)
-    # @cog_ext.cog_slash(
-    #     name="rank",
-    #     description="Votre classement dans l'utilisation d'une expression.",
-    #     guild_ids=TRACKED_GUILD_IDS,
-    #     options=[
-    #         create_option(
-    #             name="expression",
-    #             description="Saisissez un mot ou une phrase.",
-    #             option_type=3,
-    #             required=True,
-    #         ),
-    #     ],
-    # )
-    @app_commands.command(name="rank", description="test")
+    @app_commands.command(
+        name="rank", description="Votre classement dans l'utilisation d'une expression."
+    )
     @app_commands.describe(
-        expression="The first value you want to add something to",
+        expression="Saisissez un mot ou une phrase.",
     )
     async def rank_slash(self, interaction: discord.Interaction, expression: str):
         await interaction.response.defer(thinking=True)
