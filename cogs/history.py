@@ -243,6 +243,33 @@ class History(commands.Cog):
 
         return save_result
 
+    @commands.command()
+    @commands.is_owner()
+    async def channels(self, ctx: commands.Context, guild_id: int):
+        """Known channels"""
+        tracking_cog = get_tracking_cog(self.bot)
+        db = tracking_cog.tracked_guilds[guild_id]
+        guild = self.bot.get_guild(guild_id)
+
+        if guild is None:
+            await ctx.send("Je ne trouve pas cette guild")
+            return
+
+        # Récupérer liste channels connus
+        known_channels = await self._get_known_channels(db)
+        if not known_channels:
+            await ctx.send("Aucun channel connu, d'abord utiliser saveall ou save")
+            return
+        await ctx.send(
+            f"J'ai trouvé **{len(known_channels)}** channels connus en db..."
+        )
+
+        # Parcours channels
+        channels_names = []
+        for channel in known_channels:
+            channels_names.append(channel.name)
+        await ctx.send("\n".join(channels_names))
+
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
         """Récupérer la liste des channels connus en db"""
         known_channels = []
