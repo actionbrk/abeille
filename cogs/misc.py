@@ -29,9 +29,9 @@ class Misc(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def clear(self, ctx: commands.Context):
+    async def clear(self, ctx: commands.Context, guild: Optional[str] = None):
         """Sync commands globally"""
-        await self._clear_commands()
+        await self._clear_commands(guild=guild)
 
     @commands.command()
     @commands.is_owner()
