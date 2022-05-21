@@ -104,7 +104,9 @@ class Activity(commands.Cog):
             terme = custom_emoji_str
 
         title_lines = textwrap.wrap(f"Tendances de <b>'{terme}'</b>")
-        title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
+        title_lines.append(
+            f"<i style='font-size: 10px'>Sur {guild_name}. <b>Attention, cette version d'Abeille est en développement.</b></i>"
+        )
         title = "<br>".join(title_lines)
         fig: go.Figure = px.area(
             df,
@@ -164,7 +166,8 @@ class Activity(commands.Cog):
         # Envoyer image
         logging.info("Sending image to client...")
         await interaction.followup.send(
-            file=discord.File(io.BytesIO(img), "abeille.png")
+            "⚠️ **Attention**, cette version d'Abeille est une version de développement : ne croyez pas trop à ces données. 🐝",
+            file=discord.File(io.BytesIO(img), "abeille.png"),
         )
         logging.info("Image sent to client.")
 
@@ -220,7 +223,8 @@ class Activity(commands.Cog):
 
         # Envoyer image
         await interaction.followup.send(
-            file=discord.File(io.BytesIO(img), "abeille.png")
+            "⚠️ **Attention**, cette version d'Abeille est une version de développement : ne croyez pas trop à ces données. 🐝",
+            file=discord.File(io.BytesIO(img), "abeille.png"),
         )
 
     async def _get_compare_img(
@@ -279,7 +283,9 @@ class Activity(commands.Cog):
         df[expression2] = df.get(expression2).rolling(ROLLING_AVERAGE).mean()
 
         title_lines = textwrap.wrap(f"<b>'{expression1}'</b> vs <b>'{expression2}'</b>")
-        title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
+        title_lines.append(
+            f"<i style='font-size: 10px'>Sur {guild_name}. <b>Attention, cette version d'Abeille est en développement.</b></i>"
+        )
         title = "<br>".join(title_lines)
         fig: go.Figure = px.line(
             df,
