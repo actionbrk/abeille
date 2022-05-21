@@ -208,28 +208,27 @@ class History(commands.Cog):
         save_result = SaveResult()
 
         with db:
-            with db.bind_ctx([Message]):
-                print(f"binded to {guild.id} before saving {channel.name}")
-                async for message in channel.history(
-                    limit=count,
-                    before=before,
-                    after=after,
-                    around=around,
-                    oldest_first=oldest_first,
-                ):
-                    save_result.trouves += 1
+            async for message in channel.history(
+                limit=count,
+                before=before,
+                after=after,
+                around=around,
+                oldest_first=oldest_first,
+            ):
+                save_result.trouves += 1
 
-                    # Progress
-                    if save_result.trouves % 500 == 0:
-                        logging.info(f"{save_result.trouves} / {count}")
+                # Progress
+                if save_result.trouves % 500 == 0:
+                    logging.info(f"{save_result.trouves} / {count}")
 
-                    # Ignorer messages bot
-                    if message.author.bot:
-                        save_result.from_bot += 1
-                        continue
+                # Ignorer messages bot
+                if message.author.bot:
+                    save_result.from_bot += 1
+                    continue
 
-                    # Vérifier si le message existe avant d'enregistrer
-                    # TODO: Plutôt faire select().count() ?
+                # Vérifier si le message existe avant d'enregistrer
+                # TODO: Plutôt faire select().count() ?
+                with db.bind_ctx([Message]):
                     try:
                         Message.get_by_id(message.id)
                         save_result.deja_sauves += 1
@@ -241,7 +240,7 @@ class History(commands.Cog):
                     msg = get_message(message)
                     msg.save(force_insert=True)
                     save_result.sauves += 1
-                print(f"finished {channel.name}")
+
         return save_result
 
     @commands.command()

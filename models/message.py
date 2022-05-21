@@ -13,8 +13,8 @@ class Message(Model):
     content = TextField()
     attachment_url = TextField(null=True)
 
-    class Meta:
-        model_metadata_class = ThreadSafeDatabaseMetadata
+    # class Meta:
+    # model_metadata_class = ThreadSafeDatabaseMetadata
 
 
 class MessageIndex(FTS5Model):
@@ -25,7 +25,7 @@ class MessageIndex(FTS5Model):
     class Meta:
         """MessageIndex Meta"""
 
-        model_metadata_class = ThreadSafeDatabaseMetadata
+        # model_metadata_class = ThreadSafeDatabaseMetadata
 
         options = {
             "content_rowid": Message.message_id,
