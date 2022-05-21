@@ -1,12 +1,13 @@
 """ Commandes d'administration """
 
+import logging
 import os
 
 import discord
 from discord.ext import commands
 
 from cogs.tracking import get_tracking_cog
-from models.message import Message
+from models.message import Message, MessageIndex
 
 # Chargement paramètres DB
 salt = os.getenv("SALT").encode()  # type:ignore
@@ -26,6 +27,30 @@ class Admin(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @commands.command()
+    @commands.is_owner()
+    async def optimize(self, ctx: commands.Context):
+        """Optimize MessageIndex of every databases"""
+        tracking_cog = get_tracking_cog(self.bot)
+        for guild_id, db in tracking_cog.tracked_guilds.items():
+            with db:
+                with db.bind_ctx([MessageIndex]):
+                    logging.info("Optimizing %s...", str(guild_id))
+                    MessageIndex.optimize()
+                    logging.info("Optimized.")
+
+    @commands.command()
+    @commands.is_owner()
+    async def rebuild(self, ctx: commands.Context):
+        """Rebuild MessageIndex of every databases"""
+        tracking_cog = get_tracking_cog(self.bot)
+        for guild_id, db in tracking_cog.tracked_guilds.items():
+            with db:
+                with db.bind_ctx([MessageIndex]):
+                    logging.info("Rebuilding %s...", str(guild_id))
+                    MessageIndex.optimize()
+                    logging.info("Rebuilt.")
 
     @commands.command(name="recap", aliases=["récap"])
     @commands.guild_only()
