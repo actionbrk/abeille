@@ -207,15 +207,15 @@ class History(commands.Cog):
 
         save_result = SaveResult()
 
-        with db:
-            with db.bind_ctx([Message]):
-                async for message in channel.history(
-                    limit=count,
-                    before=before,
-                    after=after,
-                    around=around,
-                    oldest_first=oldest_first,
-                ):
+        async for message in channel.history(
+            limit=count,
+            before=before,
+            after=after,
+            around=around,
+            oldest_first=oldest_first,
+        ):
+            with db:
+                with db.bind_ctx([Message]):
                     save_result.trouves += 1
 
                     # Progress
