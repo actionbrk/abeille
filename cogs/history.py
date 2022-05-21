@@ -207,15 +207,16 @@ class History(commands.Cog):
 
         save_result = SaveResult()
 
-        async for message in channel.history(
-            limit=count,
-            before=before,
-            after=after,
-            around=around,
-            oldest_first=oldest_first,
-        ):
-            with db:
-                with db.bind_ctx([Message]):
+        with db:
+            with db.bind_ctx([Message]):
+                print(f"binded to {guild.id} before saving {channel.name}")
+                async for message in channel.history(
+                    limit=count,
+                    before=before,
+                    after=after,
+                    around=around,
+                    oldest_first=oldest_first,
+                ):
                     save_result.trouves += 1
 
                     # Progress
@@ -240,7 +241,7 @@ class History(commands.Cog):
                     msg = get_message(message)
                     msg.save(force_insert=True)
                     save_result.sauves += 1
-
+                print(f"finished {channel.name}")
         return save_result
 
     @commands.command()
