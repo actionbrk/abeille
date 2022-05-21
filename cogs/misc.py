@@ -1,9 +1,15 @@
+import asyncio
 import logging
 from typing import Optional
+
 import discord
+from common.utils import DEV_GUILD
 from discord import app_commands
 from discord.ext import commands
-from common.utils import DEV_GUILD
+from models.message import Message
+from peewee import fn
+
+from cogs.tracking import get_tracking_cog
 
 
 class Misc(commands.Cog):
@@ -14,6 +20,38 @@ class Misc(commands.Cog):
     async def ping(self, interaction: discord.Interaction):
         """Ping"""
         await interaction.response.send_message("Je fonctionne ! 🐝")
+
+    @app_commands.command(
+        name="random",
+        description="Un message ou un média aléatoire provenant de ce salon.",
+    )
+    async def random(self, interaction: discord.Interaction):
+        """Random message"""
+        tracking_cog = get_tracking_cog(self.bot)
+        db = tracking_cog.tracked_guilds[interaction.guild_id]
+
+        with db:
+            with db.bind_ctx([Message]):
+                message: Message = (
+                    Message.select()
+                    .where(
+                        (Message.channel_id == interaction.channel_id)
+                        & (
+                            Message.attachment_url.is_null(False)
+                            | Message.content.is_null(False)
+                        )
+                    )
+                    .order_by(fn.Random())
+                    .get()
+                )
+
+        await interaction.response.send_message(
+            message.attachment_url or message.content
+        )
+
+        # Delete message in 2 minutes
+        await asyncio.sleep(120)
+        await interaction.delete_original_message()
 
     @commands.command()
     @commands.is_owner()
