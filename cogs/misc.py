@@ -39,6 +39,15 @@ class Misc(commands.Cog):
         """Sync commands globally"""
         await self._clear_commands(guild=DEV_GUILD)
 
+    @commands.command()
+    @commands.is_owner()
+    async def fetch(self, ctx: commands.Context):
+        """Sync commands globally"""
+        list_commands = await self.bot.tree.fetch_commands()
+        print("fetching...")
+        for command in list_commands:
+            print(f"{command.name} ({command.id})")
+
     async def _sync_commands(self, *, guild: Optional[discord.abc.Snowflake] = None):
         """Synchronize commands (to guild or globally)"""
         logging.info("Syncing commands...")
@@ -53,8 +62,10 @@ class Misc(commands.Cog):
         """Clear and synchronize commands (to guild or globally)"""
         logging.info("Clearing and syncing commands...")
         self.bot.tree.clear_commands(guild=guild)
-        await self.bot.tree.sync(guild=guild)
+        synced_commands = await self.bot.tree.sync(guild=guild)
         logging.info("Commands synced.")
+        for sync_command in synced_commands:
+            print(f"{sync_command.name} ({sync_command.id})")
 
 
 async def setup(bot):
