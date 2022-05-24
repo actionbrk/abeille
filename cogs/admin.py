@@ -49,7 +49,7 @@ class Admin(commands.Cog):
             with db:
                 with db.bind_ctx([MessageIndex]):
                     logging.info("Rebuilding %s...", str(guild_id))
-                    MessageIndex.optimize()
+                    MessageIndex.rebuild()
                     logging.info("Rebuilt.")
 
     @commands.command(name="recap", aliases=["récap"])
