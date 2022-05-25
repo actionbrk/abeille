@@ -56,14 +56,7 @@ class Activity(commands.Cog):
                     Message.select(
                         fn.DATE(Message.timestamp).alias("date"),
                         (
-                            fn.SUM(
-                                Message.message_id.in_(
-                                    SQL(
-                                        "(SELECT messageindex.rowid from messageindex where messageindex match ?)",
-                                        [terme],
-                                    )
-                                )
-                            )
+                            fn.SUM(Message.content.contains(terme))
                             / fn.COUNT(Message.message_id).cast("REAL")
                         ).alias("messages"),
                     )
@@ -71,6 +64,27 @@ class Activity(commands.Cog):
                     .where(fn.DATE(Message.timestamp) <= jour_fin)
                     .group_by(fn.DATE(Message.timestamp))
                 )
+
+                # TODO: MATCH
+                # query: Query = (
+                #     Message.select(
+                #         fn.DATE(Message.timestamp).alias("date"),
+                #         (
+                #             fn.SUM(
+                #                 Message.message_id.in_(
+                #                     SQL(
+                #                         "(SELECT messageindex.rowid from messageindex where messageindex match ?)",
+                #                         [terme],
+                #                     )
+                #                 )
+                #             )
+                #             / fn.COUNT(Message.message_id).cast("REAL")
+                #         ).alias("messages"),
+                #     )
+                #     .where(fn.DATE(Message.timestamp) >= jour_debut)
+                #     .where(fn.DATE(Message.timestamp) <= jour_fin)
+                #     .group_by(fn.DATE(Message.timestamp))
+                # )
 
                 # Alternative SQL brut (manque filtrage date)
                 # query = RawQuery(
