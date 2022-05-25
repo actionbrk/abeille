@@ -87,13 +87,6 @@ class Privacy(commands.Cog):
     async def export_slash(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
-        # TODO: Temporarily disabled
-        await interaction.followup.send(
-            "Cette commande est momentanément indisponible. Rendez-vous sur https://kutt.it/Abeille pour plus d'infos. 🐝",
-            ephemeral=True,
-        )
-        return
-
         author = interaction.user
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
