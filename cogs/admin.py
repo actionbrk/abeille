@@ -92,7 +92,7 @@ class Admin(commands.Cog):
                 continue
 
             try:
-                await channel.history(limit=10).flatten()
+                [message async for message in channel.history(limit=10)]
             except discord.Forbidden as _exc:
                 nok_channels.append(f"⭕ {channel.name}")
                 continue
