@@ -1,11 +1,13 @@
 """ Commandes d'administration """
 
-import discord
+import logging
 import os
+
+import discord
 from discord.ext import commands
 
 from cogs.tracking import get_tracking_cog
-from models.message import Message
+from models.message import Message, MessageIndex
 
 # Chargement paramètres DB
 salt = os.getenv("SALT").encode()  # type:ignore
@@ -21,20 +23,48 @@ async def is_admin(ctx: commands.Context):
 
 
 class Admin(commands.Cog):
+    """Admin commands"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @commands.command()
+    @commands.is_owner()
+    async def optimize(self, ctx: commands.Context):
+        """Optimize MessageIndex of every databases"""
+        tracking_cog = get_tracking_cog(self.bot)
+        for guild_id, db in tracking_cog.tracked_guilds.items():
+            with db:
+                with db.bind_ctx([MessageIndex]):
+                    logging.info("Optimizing %s...", str(guild_id))
+                    MessageIndex.optimize()
+                    logging.info("Optimized.")
+
+    @commands.command()
+    @commands.is_owner()
+    async def rebuild(self, ctx: commands.Context):
+        """Rebuild MessageIndex of every databases"""
+        tracking_cog = get_tracking_cog(self.bot)
+        for guild_id, db in tracking_cog.tracked_guilds.items():
+            with db:
+                with db.bind_ctx([MessageIndex]):
+                    logging.info("Rebuilding %s...", str(guild_id))
+                    MessageIndex.rebuild()
+                    logging.info("Rebuilt.")
 
     @commands.command(name="recap", aliases=["récap"])
     @commands.guild_only()
     @commands.check(is_admin)
     async def check(self, ctx: commands.Context):
+        """Vérifie quels channels sont enregistrés"""
         assert ctx.guild is not None, "Impossible de récupérer la guild"
         await self._check(ctx, ctx.guild.id)
 
     @commands.command(name="recapid", aliases=["récapid"])
     @commands.guild_only()
-    @commands.check(is_admin)
+    @commands.is_owner()
     async def check_id(self, ctx: commands.Context, guild_id: int):
+        """Vérifie quels channels sont enregistrés (id)"""
         await self._check(ctx, guild_id)
 
     async def _check(self, ctx: commands.Context, guild_id: int):
@@ -62,8 +92,8 @@ class Admin(commands.Cog):
                 continue
 
             try:
-                await channel.history(limit=10).flatten()
-            except discord.Forbidden as exc:
+                [message async for message in channel.history(limit=10)]
+            except discord.Forbidden as _exc:
                 nok_channels.append(f"⭕ {channel.name}")
                 continue
 
@@ -102,5 +132,5 @@ class Admin(commands.Cog):
             await ctx.author.send("Seuls les admins peuvent exécuter cette commande. 🐝")
 
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))

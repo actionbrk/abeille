@@ -1,7 +1,15 @@
 from discord.ext import commands
+import discord
+
+from common.utils import DEV_GUILD
+
+# TODO: Supprimer
+MY_GUILD = discord.Object(id=504718202010468372)
 
 
 class CogManager(commands.Cog):
+    """Manage cogs"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -12,9 +20,9 @@ class CogManager(commands.Cog):
         Remember to use dot path. e.g: cogs.owner"""
 
         try:
-            self.bot.load_extension(cog)
-        except Exception as e:
-            await ctx.send(f"**`ERROR:`** {type(e).__name__} - {e}")
+            await self.bot.load_extension(cog)
+        except Exception as exc:
+            await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
             await ctx.send("**`SUCCESS`**")
 
@@ -25,9 +33,9 @@ class CogManager(commands.Cog):
         Remember to use dot path. e.g: cogs.owner"""
 
         try:
-            self.bot.unload_extension(cog)
-        except Exception as e:
-            await ctx.send(f"**`ERROR:`** {type(e).__name__} - {e}")
+            await self.bot.unload_extension(cog)
+        except Exception as exc:
+            await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
             await ctx.send("**`SUCCESS`**")
 
@@ -38,9 +46,9 @@ class CogManager(commands.Cog):
         Remember to use dot path. e.g: cogs.owner"""
 
         try:
-            self.bot.reload_extension(cog)
-        except Exception as e:
-            await ctx.send(f"**`ERROR:`** {type(e).__name__} - {e}")
+            await self.bot.reload_extension(cog)
+        except Exception as exc:
+            await ctx.send(f"**`ERROR:`** {type(exc).__name__} - {exc}")
         else:
             await ctx.send("**`SUCCESS`**")
 
@@ -57,5 +65,5 @@ class CogManager(commands.Cog):
             await ctx.send(cog_name)
 
 
-def setup(bot):
-    bot.add_cog(CogManager(bot))
+async def setup(bot):
+    await bot.add_cog(CogManager(bot))

@@ -1,12 +1,12 @@
-from common.utils import TRACKED_GUILD_IDS
 import csv
 import hashlib
+import logging
 import os
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import discord
 from discord.ext import commands
-from discord_slash import cog_ext
-from discord_slash.context import SlashContext
+from discord import app_commands
 from dotenv import load_dotenv
 from peewee import DoesNotExist
 
@@ -14,7 +14,7 @@ from models.message import Message
 from cogs.tracking import get_tracking_cog
 
 # Chargement paramètres DB
-load_dotenv()
+# load_dotenv()
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore
@@ -82,23 +82,25 @@ class Privacy(commands.Cog):
         )
         await msg_bot.edit(content=" ".join(result))
 
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name="export",
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
-        guild_ids=TRACKED_GUILD_IDS,
     )
-    async def export_slash(self, ctx: SlashContext):
-        await ctx.defer()
-        author = ctx.author
+    @app_commands.guild_only()
+    async def export_slash(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        author = interaction.user
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
         ).hex()
-        guild = ctx.guild
+        guild = interaction.guild
 
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild.id]
 
         temp_csv_path = f"/tmp/export_{author_id[:5]}.csv"
+        temp_zip_path = f"/tmp/export_{author_id[:5]}.zip"
 
         with db:
             with db.bind_ctx([Message]):
@@ -113,6 +115,14 @@ class Privacy(commands.Cog):
                     ):
                         writer.writerow(message)
 
+        # Zip with max compression level
+        logging.info("Zipping file...")
+        with ZipFile(
+            temp_zip_path, "w", compression=ZIP_DEFLATED, compresslevel=9
+        ) as myzip:
+            myzip.write(temp_csv_path)
+        logging.info("File zipped.")
+
         result = (
             "Voici les messages de vous que j'ai récoltés.",
             "Si vous souhaitez supprimer définitivement",
@@ -121,17 +131,21 @@ class Privacy(commands.Cog):
             "L'ID du message est la première information de chaque",
             "ligne du fichier que j'ai envoyé 🐝",
         )
-        await ctx.author.send(
+
+        # Envoyer par MP
+        await author.send(
             " ".join(result),
-            file=discord.File(temp_csv_path),
+            file=discord.File(temp_zip_path),
         )
         os.remove(temp_csv_path)
+        os.remove(temp_zip_path)
 
-        await ctx.send(
+        await interaction.followup.send(
             "Les données vous concernant vous ont été envoyées par message privé. 🐝",
-            hidden=True,
+            ephemeral=True,
         )
 
+    # TODO: Remove guild_only
     @commands.command()
     @commands.guild_only()
     async def delete(self, ctx: commands.Context, message_id: int):
@@ -188,5 +202,5 @@ class Privacy(commands.Cog):
         await ctx.author.send("Je viens de supprimer ce message de ma ruche 🐝")
 
 
-def setup(bot):
-    bot.add_cog(Privacy(bot))
+async def setup(bot):
+    await bot.add_cog(Privacy(bot))

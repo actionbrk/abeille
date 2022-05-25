@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 from typing import List, Union
 
@@ -7,8 +8,8 @@ from discord.abc import Snowflake
 from discord.ext import commands
 from peewee import Database, DoesNotExist
 
-from cogs.tracking import get_message, get_tracking_cog
 from models.message import Message
+from cogs.tracking import get_message, get_tracking_cog
 
 
 class SaveResult:
@@ -23,12 +24,15 @@ class SaveResult:
 
 
 class History(commands.Cog):
+    """Save commands module"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @commands.command()
     @commands.is_owner()
     async def saveold(self, ctx: commands.Context, channel_id: int, count: int):
+        """Saves older messages in this channel"""
         tracking_cog = get_tracking_cog(self.bot)
         channel = self.bot.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
@@ -203,24 +207,28 @@ class History(commands.Cog):
 
         save_result = SaveResult()
 
-        async for message in channel.history(
-            limit=count,
-            before=before,
-            after=after,
-            around=around,
-            oldest_first=oldest_first,
-        ):
-            save_result.trouves += 1
+        with db:
+            async for message in channel.history(
+                limit=count,
+                before=before,
+                after=after,
+                around=around,
+                oldest_first=oldest_first,
+            ):
+                save_result.trouves += 1
 
-            # Ignorer messages bot
-            if message.author.bot:
-                save_result.from_bot += 1
-                continue
+                # Progress
+                if save_result.trouves % 500 == 0:
+                    logging.info(f"{save_result.trouves} / {count}")
 
-            with db:
+                # Ignorer messages bot
+                if message.author.bot:
+                    save_result.from_bot += 1
+                    continue
+
+                # Vérifier si le message existe avant d'enregistrer
+                # TODO: Plutôt faire select().count() ?
                 with db.bind_ctx([Message]):
-                    # Vérifier si le message existe avant d'enregistrer
-                    # TODO: Plutôt faire select().count() ?
                     try:
                         Message.get_by_id(message.id)
                         save_result.deja_sauves += 1
@@ -234,6 +242,33 @@ class History(commands.Cog):
                     save_result.sauves += 1
 
         return save_result
+
+    @commands.command()
+    @commands.is_owner()
+    async def channels(self, ctx: commands.Context, guild_id: int):
+        """Known channels"""
+        tracking_cog = get_tracking_cog(self.bot)
+        db = tracking_cog.tracked_guilds[guild_id]
+        guild = self.bot.get_guild(guild_id)
+
+        if guild is None:
+            await ctx.send("Je ne trouve pas cette guild")
+            return
+
+        # Récupérer liste channels connus
+        known_channels = await self._get_known_channels(db)
+        if not known_channels:
+            await ctx.send("Aucun channel connu, d'abord utiliser saveall ou save")
+            return
+        await ctx.send(
+            f"J'ai trouvé **{len(known_channels)}** channels connus en db..."
+        )
+
+        # Parcours channels
+        channels_names = []
+        for channel in known_channels:
+            channels_names.append(channel.name)
+        await ctx.send("\n".join(channels_names))
 
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
         """Récupérer la liste des channels connus en db"""
@@ -252,5 +287,5 @@ class History(commands.Cog):
         return known_channels
 
 
-def setup(bot):
-    bot.add_cog(History(bot))
+async def setup(bot):
+    await bot.add_cog(History(bot))
