@@ -86,6 +86,7 @@ class Privacy(commands.Cog):
         name="export",
         description="Télécharger les données d'Abeille vous concernant sur cette guild.",
     )
+    @app_commands.guild_only()
     async def export_slash(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
 
@@ -144,7 +145,7 @@ class Privacy(commands.Cog):
             ephemeral=True,
         )
 
-    # TODO: Slash command
+    # TODO: Remove guild_only
     @commands.command()
     @commands.guild_only()
     async def delete(self, ctx: commands.Context, message_id: int):

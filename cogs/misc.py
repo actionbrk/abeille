@@ -25,6 +25,7 @@ class Misc(commands.Cog):
         name="random",
         description="Un message ou un média aléatoire provenant de ce salon.",
     )
+    @app_commands.guild_only()
     async def random(self, interaction: discord.Interaction):
         """Random message"""
         tracking_cog = get_tracking_cog(self.bot)

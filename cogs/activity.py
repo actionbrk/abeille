@@ -163,6 +163,7 @@ class Activity(commands.Cog):
             Choice(name="3 ans", value=1096),
         ]
     )
+    @app_commands.guild_only()
     async def trend_slash(
         self, interaction: discord.Interaction, terme: str, periode: Choice[int]
     ):
@@ -214,6 +215,7 @@ class Activity(commands.Cog):
             Choice(name="3 ans", value=1096),
         ]
     )
+    @app_commands.guild_only()
     async def compare_slash(
         self,
         interaction: discord.Interaction,
@@ -373,6 +375,7 @@ class Activity(commands.Cog):
     @app_commands.describe(
         expression="Saisissez un mot ou une phrase.",
     )
+    @app_commands.guild_only()
     async def rank_slash(self, interaction: discord.Interaction, expression: str):
         await interaction.response.defer(thinking=True)
         expression = expression.strip()
