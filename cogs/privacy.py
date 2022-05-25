@@ -1,6 +1,8 @@
 import csv
 import hashlib
+import logging
 import os
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import discord
 from discord.ext import commands
@@ -97,6 +99,7 @@ class Privacy(commands.Cog):
         db = tracking_cog.tracked_guilds[guild.id]
 
         temp_csv_path = f"/tmp/export_{author_id[:5]}.csv"
+        temp_zip_path = f"/tmp/export_{author_id[:5]}.zip"
 
         with db:
             with db.bind_ctx([Message]):
@@ -111,6 +114,14 @@ class Privacy(commands.Cog):
                     ):
                         writer.writerow(message)
 
+        # Zip with max compression level
+        logging.info("Zipping file...")
+        with ZipFile(
+            temp_zip_path, "w", compression=ZIP_DEFLATED, compresslevel=9
+        ) as myzip:
+            myzip.write(temp_csv_path)
+        logging.info("File zipped.")
+
         result = (
             "Voici les messages de vous que j'ai récoltés.",
             "Si vous souhaitez supprimer définitivement",
@@ -123,11 +134,11 @@ class Privacy(commands.Cog):
         # Envoyer par MP
         await author.send(
             " ".join(result),
-            file=discord.File(temp_csv_path),
+            file=discord.File(temp_zip_path),
         )
         os.remove(temp_csv_path)
+        os.remove(temp_zip_path)
 
-        # TODO: Envoyer en ephemeral
         await interaction.followup.send(
             "Les données vous concernant vous ont été envoyées par message privé. 🐝",
             ephemeral=True,
