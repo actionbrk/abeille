@@ -120,8 +120,8 @@ class Privacy(commands.Cog):
             "ligne du fichier que j'ai envoyé 🐝",
         )
 
-        # TODO: Envoyer par MP
-        await interaction.followup.user.send(
+        # Envoyer par MP
+        await author.send(
             " ".join(result),
             file=discord.File(temp_csv_path),
         )
