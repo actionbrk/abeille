@@ -40,7 +40,8 @@ class Misc(commands.Cog):
         """Random message"""
         # Specified channel or interaction channel by default
         channel_id = interaction.channel_id
-        if channel:
+        # TODO: Prevent user if selected channel is nsfw
+        if channel and not channel.is_nsfw():
             channel_id = channel.id
 
         # Message type
