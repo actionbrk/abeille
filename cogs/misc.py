@@ -21,13 +21,33 @@ class Misc(commands.Cog):
         """Ping"""
         await interaction.response.send_message("Je fonctionne ! 🐝")
 
+    # TODO: Channel parameter (not nsfw?)
     @app_commands.command(
         name="random",
         description="Un message ou un média aléatoire provenant de ce salon.",
     )
+    @app_commands.describe(
+        channel="Salon sur lequel choisir un message au hasard.",
+        media="Uniquement des images.",
+    )
     @app_commands.guild_only()
-    async def random(self, interaction: discord.Interaction):
+    async def random(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[discord.TextChannel],
+        media: Optional[bool],
+    ):
         """Random message"""
+        # Specified channel or interaction channel by default
+        channel_id = interaction.channel_id
+        if channel:
+            channel_id = channel.id
+
+        # Message type
+        filter_expression = Message.channel_id == channel_id
+        if media:
+            filter_expression &= Message.attachment_url.is_null(False)
+
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[interaction.guild_id]
 
@@ -35,13 +55,7 @@ class Misc(commands.Cog):
             with db.bind_ctx([Message]):
                 message: Message = (
                     Message.select()
-                    .where(
-                        (Message.channel_id == interaction.channel_id)
-                        & (
-                            Message.attachment_url.is_null(False)
-                            | Message.content.is_null(False)
-                        )
-                    )
+                    .where(filter_expression)
                     .order_by(fn.Random())
                     .get()
                 )
