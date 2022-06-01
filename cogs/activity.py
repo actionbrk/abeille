@@ -112,6 +112,9 @@ class Activity(commands.Cog):
         # Rolling average
         df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
 
+        # Remove NaN values
+        df = df.dropna()
+
         # Si emote custom : simplifier le nom pour titre DW
         custom_emoji_str = emoji_to_str(terme)
         if custom_emoji_str:
@@ -129,20 +132,6 @@ class Activity(commands.Cog):
             template="plotly_dark",
             title=title,
             labels={"date": "", "messages": ""},
-        )
-        fig.add_layout_image(
-            dict(
-                source="https://i.imgur.com/Eqy58rg.png",
-                xref="paper",
-                yref="paper",
-                x=1.1,
-                y=-0.22,
-                sizex=0.25,
-                sizey=0.25,
-                xanchor="right",
-                yanchor="bottom",
-                opacity=0.8,
-            )
         )
         logging.info("Data processed and graph created. Exporting to image...")
 
@@ -294,6 +283,9 @@ class Activity(commands.Cog):
         df[expression1] = df.get(expression1).rolling(ROLLING_AVERAGE).mean()
         df[expression2] = df.get(expression2).rolling(ROLLING_AVERAGE).mean()
 
+        # Remove NaN values
+        df = df.dropna()
+
         title_lines = textwrap.wrap(f"<b>'{expression1}'</b> vs <b>'{expression2}'</b>")
         title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
         title = "<br>".join(title_lines)
@@ -319,21 +311,6 @@ class Activity(commands.Cog):
                 yanchor="bottom",
                 x=0.5,
                 xanchor="center",
-            )
-        )
-
-        fig.add_layout_image(
-            dict(
-                source="https://i.imgur.com/Eqy58rg.png",
-                xref="paper",
-                yref="paper",
-                x=1.1,
-                y=-0.22,
-                sizex=0.25,
-                sizey=0.25,
-                xanchor="right",
-                yanchor="bottom",
-                opacity=0.8,
             )
         )
 
