@@ -54,7 +54,7 @@ class Misc(commands.Cog):
             if channel.is_nsfw() and not interaction.channel.is_nsfw():
                 fallback_channel = interaction.channel
             else:
-            channel_id = channel.id
+                channel_id = channel.id
 
         # Message type
         filter_expression = Message.channel_id == channel_id
