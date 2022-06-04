@@ -83,7 +83,7 @@ class Misc(commands.Cog):
                 await interaction.followup.send(
                     f"Le salon spécifié étant NSFW, le /random a été réalisé sur le salon <#{fallback_channel.id}>.",
                     ephemeral=True,
-        )
+                )
 
         # Delete message in 2 minutes
         await asyncio.sleep(120)
