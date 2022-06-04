@@ -38,10 +38,22 @@ class Misc(commands.Cog):
         media: Optional[bool],
     ):
         """Random message"""
+        await interaction.response.defer(thinking=True)
+
+        if not interaction.guild_id:
+            await interaction.followup.send("Can't find guild id.")
+            return
+
         # Specified channel or interaction channel by default
         channel_id = interaction.channel_id
-        # TODO: Prevent user if selected channel is nsfw
-        if channel and not channel.is_nsfw():
+
+        fallback_channel = None
+
+        if channel:
+            # TODO: Prevent user if specified channel is nsfw while interaction is done in sfw channel
+            if channel.is_nsfw() and not interaction.channel.is_nsfw():
+                fallback_channel = interaction.channel
+            else:
             channel_id = channel.id
 
         # Message type
@@ -58,11 +70,19 @@ class Misc(commands.Cog):
                     Message.select()
                     .where(filter_expression)
                     .order_by(fn.Random())
-                    .get()
+                    .get_or_none()
                 )
 
-        await interaction.response.send_message(
-            message.attachment_url or message.content
+        if message is None:
+            await interaction.followup.send(
+                f"Je n'ai pas trouvé de message sur le salon <#{interaction.channel_id}>."
+            )
+        else:
+            await interaction.followup.send(message.attachment_url or message.content)
+            if fallback_channel:
+                await interaction.followup.send(
+                    f"Le salon spécifié étant NSFW, le /random a été réalisé sur le salon <#{fallback_channel.id}>.",
+                    ephemeral=True,
         )
 
         # Delete message in 2 minutes
