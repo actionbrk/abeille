@@ -150,6 +150,7 @@ class Activity(commands.Cog):
             Choice(name="1 an", value=365),
             Choice(name="2 ans", value=730),
             Choice(name="3 ans", value=1096),
+            Choice(name="Depuis le début", value=9999),
         ]
     )
     @app_commands.guild_only()
@@ -202,6 +203,7 @@ class Activity(commands.Cog):
             Choice(name="1 an", value=365),
             Choice(name="2 ans", value=730),
             Choice(name="3 ans", value=1096),
+            Choice(name="Depuis le début", value=9999),
         ]
     )
     @app_commands.guild_only()
