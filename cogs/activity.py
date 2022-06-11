@@ -65,7 +65,7 @@ class Activity(commands.Cog):
                     .group_by(fn.DATE(Message.timestamp))
                 )
 
-                # TODO: MATCH
+                # TODO: MATCH -> another slash command
                 # query: Query = (
                 #     Message.select(
                 #         fn.DATE(Message.timestamp).alias("date"),

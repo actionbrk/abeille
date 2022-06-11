@@ -36,6 +36,10 @@ class Misc(commands.Cog):
         interaction: discord.Interaction,
         channel: Optional[discord.TextChannel],
         media: Optional[bool],
+        # TODO: min_length
+        # TODO: user?
+        # TODO: contains (random qui contient un terme)
+        # TODO:
     ):
         """Random message"""
         await interaction.response.defer(thinking=True)
