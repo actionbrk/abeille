@@ -7,7 +7,7 @@ import os
 import textwrap
 from datetime import date, timedelta
 from typing import Any
-
+from datetime import date
 import discord
 import pandas
 import plotly.express as px
@@ -18,7 +18,7 @@ from discord import app_commands
 from discord.app_commands import Choice
 from discord.ext import commands
 from dotenv import load_dotenv
-from models.message import Message, MessageIndex
+from models.message import Message, MessageDay, MessageIndex
 from peewee import SQL, Query, Select, fn, RawQuery
 
 from cogs.tracking import get_tracking_cog
@@ -46,10 +46,13 @@ class Activity(commands.Cog):
         guild_name = self.bot.get_guild(guild_id)
 
         with db:
-            with db.bind_ctx([Message, MessageIndex]):
-                # subq: Query = MessageIndex.select(MessageIndex.rowid).where(
-                #     MessageIndex.match(terme)
-                # )
+            with db.bind_ctx([Message, MessageIndex, MessageDay]):
+
+                if periode == 9999:
+                    oldest_date: MessageDay = (
+                        MessageDay.select().order_by(MessageDay.date.asc()).get()
+                    )
+                    jour_debut = oldest_date.date
 
                 # Messages de l'utilisateur dans la période
                 query = RawQuery(
@@ -125,7 +128,7 @@ class Activity(commands.Cog):
             # line_shape="spline",
             template="plotly_dark",
             title=title,
-            labels={"date": "", "messages": ""},
+            labels={"index": "", "messages": ""},
         )
         logging.info("Data processed and graph created. Exporting to image...")
 
