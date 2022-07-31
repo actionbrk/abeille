@@ -19,7 +19,7 @@ from discord.app_commands import Choice
 from discord.ext import commands
 from dotenv import load_dotenv
 from models.message import Message, MessageIndex
-from peewee import SQL, Query, Select, fn
+from peewee import SQL, Query, Select, fn, RawQuery
 
 from cogs.tracking import get_tracking_cog
 
@@ -52,17 +52,18 @@ class Activity(commands.Cog):
                 # )
 
                 # Messages de l'utilisateur dans la période
-                query: Query = (
-                    Message.select(
-                        fn.DATE(Message.timestamp).alias("date"),
-                        (
-                            fn.SUM(Message.content.contains(terme))
-                            / fn.COUNT(Message.message_id).cast("REAL")
-                        ).alias("messages"),
-                    )
-                    .where(fn.DATE(Message.timestamp) >= jour_debut)
-                    .where(fn.DATE(Message.timestamp) <= jour_fin)
-                    .group_by(fn.DATE(Message.timestamp))
+                query = RawQuery(
+                    """
+                    SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
+                    FROM messageindex
+                    JOIN message ON messageindex.rowid = message.message_id
+                    JOIN messageday ON DATE(message.timestamp)=messageday.date
+                    WHERE messageindex MATCH ?
+                    AND DATE(message.timestamp) >= ?
+                    AND DATE(message.timestamp) <= ?
+                    GROUP BY DATE(message.timestamp)
+                    ORDER BY DATE(message.timestamp);""",
+                    params=([terme, jour_debut, jour_fin]),
                 )
 
                 # TODO: MATCH -> another slash command
@@ -86,16 +87,7 @@ class Activity(commands.Cog):
                 #     .group_by(fn.DATE(Message.timestamp))
                 # )
 
-                # Alternative SQL brut (manque filtrage date)
-                # query = RawQuery(
-                #     "SELECT DATE(message.timestamp) AS date, sum(message.message_id in (select messageindex.rowid from messageindex where messageindex match ?))/CAST(COUNT(message.message_id) as real) as messages from message group by DATE(message.timestamp);",
-                #     params=([terme]),
-                # )
-
                 # Exécution requête SQL
-                # cur = db.cursor()
-                # query_sql = cur.mogrify(*query.sql())
-
                 logging.info("Executing database request...")
                 query_sql, query_params = query.sql()
                 df = pandas.read_sql_query(
@@ -104,10 +96,12 @@ class Activity(commands.Cog):
                 logging.info("Database request answered.")
 
         logging.info("Processing data and creating graph...")
+
         # Remplir les dates manquantes
+        idx = pandas.date_range(jour_debut, jour_fin)
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
-        # df = df.asfreq("D", fill_value=0)
+        df = df.reindex(idx, fill_value=0)
 
         # Rolling average
         df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
