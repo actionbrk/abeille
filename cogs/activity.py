@@ -368,14 +368,15 @@ class Activity(commands.Cog):
         db = tracking_cog.tracked_guilds[guild_id]
 
         with db:
-            with db.bind_ctx([Message]):
+            with db.bind_ctx([Message, MessageIndex]):
                 rank_query = fn.rank().over(
                     order_by=[fn.COUNT(Message.message_id).desc()]
                 )
 
                 subq = (
                     Message.select(Message.author_id, rank_query.alias("rank"))
-                    .where(Message.content.contains(expression))
+                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
+                    .where(MessageIndex.match(expression))
                     .group_by(Message.author_id)
                 )
 
