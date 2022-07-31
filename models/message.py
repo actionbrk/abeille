@@ -38,5 +38,5 @@ class MessageIndex(FTS5Model):
         options = {
             "content_rowid": Message.message_id,
             "content": Message,
-            # "tokenize": "trigram",
+            "tokenize": "trigram",
         }
