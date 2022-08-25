@@ -39,8 +39,11 @@ class Activity(commands.Cog):
         self.bot = bot
 
     async def _get_trend_img(self, guild_id: int, terme: str, periode: int) -> Any:
+        # FTS5 : enclose in double quotes
+        terme_fts = f'"{terme}"'
+
         jour_debut = date.today() - timedelta(days=periode)
-        jour_fin = date.today() - timedelta(days=1)
+        jour_fin = None
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
         guild_name = self.bot.get_guild(guild_id)
@@ -54,6 +57,8 @@ class Activity(commands.Cog):
                     )
                     jour_debut = oldest_date.date
 
+                jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
+
                 # Messages de l'utilisateur dans la période
                 query = RawQuery(
                     """
@@ -66,7 +71,7 @@ class Activity(commands.Cog):
                     AND DATE(message.timestamp) <= ?
                     GROUP BY DATE(message.timestamp)
                     ORDER BY DATE(message.timestamp);""",
-                    params=([terme, jour_debut, jour_fin]),
+                    params=([terme_fts, jour_debut, jour_fin]),
                 )
 
                 # TODO: MATCH -> another slash command
@@ -161,6 +166,13 @@ class Activity(commands.Cog):
             await interaction.followup.send("Can't find guild id.")
             return
 
+        # FTS5 : can't tokenize expressions with less than 3 characters
+        if len(terme) < 3:
+            await interaction.followup.send(
+                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝"
+            )
+            return
+
         img = await self._get_trend_img(guild_id, terme, periode.value)
 
         # Envoyer image
@@ -169,22 +181,6 @@ class Activity(commands.Cog):
             file=discord.File(io.BytesIO(img), "abeille.png"),
         )
         logging.info("Image sent to client.")
-
-    @commands.command(name="trendid")
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    @commands.is_owner()
-    async def trend_id(self, ctx: commands.Context, guild_id: int, *, terme: str):
-        temp_msg: discord.Message = await ctx.reply(
-            f"Je génère les tendances de **{terme}**... 🐝"
-        )
-
-        async with ctx.typing():
-            img = await self._get_trend_img(guild_id, terme, PERIODE)
-
-            # Envoyer image
-            await temp_msg.delete()
-            await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
 
     @app_commands.command(
         name="compare", description="Comparer la tendance de deux expressions."
@@ -237,20 +233,21 @@ class Activity(commands.Cog):
         guild_name = self.bot.get_guild(guild_id)
 
         with db:
-            with db.bind_ctx([Message]):
+            with db.bind_ctx([Message, MessageIndex]):
                 # Messages de l'utilisateur dans la période
                 query = (
                     Message.select(
                         fn.DATE(Message.timestamp).alias("date"),
                         (
-                            fn.SUM(Message.content.contains(expression1))
+                            fn.SUM(MessageIndex.match(expression1))
                             / fn.COUNT(Message.message_id).cast("REAL")
                         ).alias("expression1"),
                         (
-                            fn.SUM(Message.content.contains(expression2))
+                            fn.SUM(MessageIndex.match(expression2))
                             / fn.COUNT(Message.message_id).cast("REAL")
                         ).alias("expression2"),
                     )
+                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
                     .where(fn.DATE(Message.timestamp) >= jour_debut)
                     .where(fn.DATE(Message.timestamp) <= jour_fin)
                     .group_by(fn.DATE(Message.timestamp))
@@ -315,24 +312,6 @@ class Activity(commands.Cog):
 
         return fig.to_image(format="png", scale=2)
 
-    @commands.command(name="vsid")
-    @commands.max_concurrency(1, wait=True)
-    @commands.guild_only()
-    @commands.is_owner()
-    async def compare_id(
-        self, ctx: commands.Context, guild_id: int, terme1: str, terme2: str
-    ):
-        temp_msg: discord.Message = await ctx.send(
-            f"Je génère les tendances comparées de **{terme1}** et **{terme2}**... 🐝"
-        )
-
-        async with ctx.typing():
-            img = await self._get_compare_img(guild_id, terme1, terme2, PERIODE)
-
-            # Envoyer image
-            await temp_msg.delete()
-            await ctx.reply(file=discord.File(io.BytesIO(img), "abeille.png"))
-
     async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, Maintenance):
             await ctx.send(
@@ -355,6 +334,17 @@ class Activity(commands.Cog):
     async def rank_slash(self, interaction: discord.Interaction, expression: str):
         await interaction.response.defer(thinking=True)
         expression = expression.strip()
+
+        # FTS5 : can't tokenize expressions with less than 3 characters
+        if len(expression) < 3:
+            await interaction.followup.send(
+                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝"
+            )
+            return
+
+        # FTS5 : enclose in double quotes
+        expression_fts = f'"{expression}"'
+
         author = interaction.user
         author_id = hashlib.pbkdf2_hmac(
             hash_name, str(author.id).encode(), salt, iterations
@@ -376,7 +366,7 @@ class Activity(commands.Cog):
                 subq = (
                     Message.select(Message.author_id, rank_query.alias("rank"))
                     .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
-                    .where(MessageIndex.match(expression))
+                    .where(MessageIndex.match(expression_fts))
                     .group_by(Message.author_id)
                 )
 
