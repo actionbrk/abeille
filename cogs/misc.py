@@ -7,7 +7,7 @@ from common.utils import DEV_GUILD
 from discord import app_commands
 from discord.ext import commands
 from models.message import Message
-from peewee import fn
+from peewee import SQL
 
 from cogs.tracking import get_tracking_cog
 
@@ -70,12 +70,23 @@ class Misc(commands.Cog):
 
         with db:
             with db.bind_ctx([Message]):
-                message: Message = (
-                    Message.select()
-                    .where(filter_expression)
-                    .order_by(fn.Random())
-                    .get_or_none()
+                params_list = [channel_id]
+                query_str = [
+                    """
+                    message_id > ((SELECT min(message_id) FROM message) + (
+                    ABS(RANDOM()) % ((SELECT max(message_id) FROM message)-(SELECT min(message_id) FROM message))
+                    ))
+                    AND channel_id=?"""
+                ]
+
+                if media:
+                    query_str.append("AND attachment_url is not null")
+
+                sql: SQL = SQL(
+                    " ".join(query_str),
+                    params_list,
                 )
+                message: Message = Message.select().where(sql).get_or_none()
 
         if message is None:
             await interaction.followup.send(
