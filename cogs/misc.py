@@ -102,7 +102,7 @@ class Misc(commands.Cog):
 
         # Delete message in 2 minutes
         await asyncio.sleep(120)
-        await interaction.delete_original_message()
+        await interaction.delete_original_response()
 
     @commands.command()
     @commands.is_owner()
