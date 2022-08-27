@@ -1,3 +1,5 @@
+import hashlib
+import os
 import asyncio
 import logging
 from typing import Optional
@@ -8,8 +10,13 @@ from discord import app_commands
 from discord.ext import commands
 from models.message import Message
 from peewee import SQL
+from discord.app_commands import Choice
 
 from cogs.tracking import get_tracking_cog
+
+salt = os.getenv("SALT").encode()  # type:ignore
+iterations = int(os.getenv("ITER"))  # type:ignore
+hash_name: str = os.getenv("HASHNAME")  # type:ignore
 
 
 class Misc(commands.Cog):
@@ -29,6 +36,14 @@ class Misc(commands.Cog):
     @app_commands.describe(
         channel="Salon sur lequel choisir un message au hasard.",
         media="Uniquement des images.",
+        length="Taille minimale du message.",
+        member="Auteur du message.",
+    )
+    @app_commands.choices(
+        length=[
+            Choice(name="Gros messages (>~250 caractères)", value=250),
+            Choice(name="Très gros messages (>~500 caractères)", value=500),
+        ]
     )
     @app_commands.guild_only()
     async def random(
@@ -36,10 +51,9 @@ class Misc(commands.Cog):
         interaction: discord.Interaction,
         channel: Optional[discord.TextChannel],
         media: Optional[bool],
-        # TODO: min_length
-        # TODO: user?
+        length: Optional[int],
+        member: Optional[discord.Member]
         # TODO: contains (random qui contient un terme)
-        # TODO:
     ):
         """Random message"""
         await interaction.response.defer(thinking=True)
@@ -60,11 +74,6 @@ class Misc(commands.Cog):
             else:
                 channel_id = channel.id
 
-        # Message type
-        filter_expression = Message.channel_id == channel_id
-        if media:
-            filter_expression &= Message.attachment_url.is_null(False)
-
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[interaction.guild_id]
 
@@ -82,6 +91,17 @@ class Misc(commands.Cog):
                 if media:
                     query_str.append("AND attachment_url is not null")
 
+                if length and length > 0:
+                    query_str.append("AND length(content) > ?")
+                    params_list.append(length)
+
+                if member:
+                    query_str.append("AND author_id=?")
+                    author_id = hashlib.pbkdf2_hmac(
+                        hash_name, str(member.id).encode(), salt, iterations
+                    ).hex()
+                    params_list.append(author_id)
+
                 sql: SQL = SQL(
                     " ".join(query_str),
                     params_list,
@@ -90,10 +110,15 @@ class Misc(commands.Cog):
 
         if message is None:
             await interaction.followup.send(
-                f"Je n'ai pas trouvé de message sur le salon <#{interaction.channel_id}>."
+                f"Je n'ai pas trouvé de message correspondant sur le salon <#{interaction.channel_id}>."
             )
         else:
-            await interaction.followup.send(message.attachment_url or message.content)
+            text_to_send = []
+            if message.content:
+                text_to_send.append(message.content)
+            if message.attachment_url:
+                text_to_send.append(message.attachment_url)
+            await interaction.followup.send("\n".join(text_to_send))
             if fallback_channel:
                 await interaction.followup.send(
                     f"Le salon spécifié étant NSFW, le /random a été réalisé sur le salon <#{fallback_channel.id}>.",
