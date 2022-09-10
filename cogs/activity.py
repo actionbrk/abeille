@@ -7,7 +7,7 @@ import os
 import textwrap
 from datetime import date, timedelta
 from typing import Any
-from datetime import date
+
 import discord
 import pandas
 import plotly.express as px
@@ -17,9 +17,8 @@ from common.utils import emoji_to_str
 from discord import app_commands
 from discord.app_commands import Choice
 from discord.ext import commands
-from dotenv import load_dotenv
 from models.message import Message, MessageDay, MessageIndex
-from peewee import SQL, Query, Select, fn, RawQuery
+from peewee import RawQuery, Select, fn
 
 from cogs.tracking import get_tracking_cog
 
@@ -38,11 +37,44 @@ class Activity(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    async def _get_trend_img(self, guild_id: int, terme: str, periode: int) -> Any:
+    @app_commands.command(
+        name="trend", description="Dessiner la tendance d'une expression."
+    )
+    @app_commands.describe(
+        terme="Le mot ou l'expression à rechercher.",
+        periode="Période de temps max sur laquelle dessiner la tendance.",
+    )
+    @app_commands.choices(
+        periode=[
+            Choice(name="6 mois", value=182),
+            Choice(name="1 an", value=365),
+            Choice(name="2 ans", value=730),
+            Choice(name="3 ans", value=1096),
+            Choice(name="Depuis le début", value=9999),
+        ]
+    )
+    @app_commands.guild_only()
+    async def trend_slash(
+        self, interaction: discord.Interaction, terme: str, periode: Choice[int]
+    ):
+        await interaction.response.defer(thinking=True)
+        guild_id = interaction.guild_id
+
+        if not guild_id:
+            await interaction.followup.send("Can't find guild id.")
+            return
+
+        # FTS5 : can't tokenize expressions with less than 3 characters
+        if len(terme) < 3:
+            await interaction.followup.send(
+                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝"
+            )
+            return
+
         # FTS5 : enclose in double quotes
         terme_fts = f'"{terme}"'
 
-        jour_debut = date.today() - timedelta(days=periode)
+        jour_debut = date.today() - timedelta(days=periode.value)
         jour_fin = None
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
@@ -51,7 +83,7 @@ class Activity(commands.Cog):
         with db:
             with db.bind_ctx([Message, MessageIndex, MessageDay]):
 
-                if periode == 9999:
+                if periode.value == 9999:
                     oldest_date: MessageDay = (
                         MessageDay.select().order_by(MessageDay.date.asc()).get()
                     )
@@ -73,27 +105,6 @@ class Activity(commands.Cog):
                     ORDER BY DATE(message.timestamp);""",
                     params=([terme_fts, jour_debut, jour_fin]),
                 )
-
-                # TODO: MATCH -> another slash command
-                # query: Query = (
-                #     Message.select(
-                #         fn.DATE(Message.timestamp).alias("date"),
-                #         (
-                #             fn.SUM(
-                #                 Message.message_id.in_(
-                #                     SQL(
-                #                         "(SELECT messageindex.rowid from messageindex where messageindex match ?)",
-                #                         [terme],
-                #                     )
-                #                 )
-                #             )
-                #             / fn.COUNT(Message.message_id).cast("REAL")
-                #         ).alias("messages"),
-                #     )
-                #     .where(fn.DATE(Message.timestamp) >= jour_debut)
-                #     .where(fn.DATE(Message.timestamp) <= jour_fin)
-                #     .group_by(fn.DATE(Message.timestamp))
-                # )
 
                 # Exécution requête SQL
                 logging.info("Executing database request...")
@@ -137,43 +148,7 @@ class Activity(commands.Cog):
         )
         logging.info("Data processed and graph created. Exporting to image...")
 
-        return fig.to_image(format="png", scale=2)
-
-    @app_commands.command(
-        name="trend", description="Dessiner la tendance d'une expression."
-    )
-    @app_commands.describe(
-        terme="Le mot ou l'expression à rechercher.",
-        periode="Période de temps max sur laquelle dessiner la tendance.",
-    )
-    @app_commands.choices(
-        periode=[
-            Choice(name="6 mois", value=182),
-            Choice(name="1 an", value=365),
-            Choice(name="2 ans", value=730),
-            Choice(name="3 ans", value=1096),
-            Choice(name="Depuis le début", value=9999),
-        ]
-    )
-    @app_commands.guild_only()
-    async def trend_slash(
-        self, interaction: discord.Interaction, terme: str, periode: Choice[int]
-    ):
-        await interaction.response.defer(thinking=True)
-        guild_id = interaction.guild_id
-
-        if not guild_id:
-            await interaction.followup.send("Can't find guild id.")
-            return
-
-        # FTS5 : can't tokenize expressions with less than 3 characters
-        if len(terme) < 3:
-            await interaction.followup.send(
-                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝"
-            )
-            return
-
-        img = await self._get_trend_img(guild_id, terme, periode.value)
+        img = fig.to_image(format="png", scale=2)
 
         # Envoyer image
         logging.info("Sending image to client...")
