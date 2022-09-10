@@ -6,7 +6,6 @@ import logging
 import os
 import textwrap
 from datetime import date, timedelta
-from typing import Any
 
 import discord
 import pandas
@@ -189,48 +188,76 @@ class Activity(commands.Cog):
             await interaction.followup.send("Can't find guild id.")
             return
 
-        img = await self._get_compare_img(
-            guild_id, expression1, expression2, periode.value
-        )
+        # FTS5 : can't tokenize expressions with less than 3 characters
+        if (len(expression1) < 3) or (len(expression2) < 3):
+            await interaction.followup.send(
+                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝"
+            )
+            return
 
-        # Envoyer image
-        await interaction.followup.send(
-            file=discord.File(io.BytesIO(img), "abeille.png"),
-        )
+        # FTS5 : enclose in double quotes
+        expression1_fts = f'"{expression1}"'
+        expression2_fts = f'"{expression2}"'
 
-    async def _get_compare_img(
-        self, guild_id: int, expression1: str, expression2: str, periode: int
-    ) -> Any:
-        jour_debut = date.today() - timedelta(days=periode)
-        jour_fin = date.today() - timedelta(days=1)
+        jour_debut = date.today() - timedelta(days=periode.value)
+        jour_fin = None
         tracking_cog = get_tracking_cog(self.bot)
         db = tracking_cog.tracked_guilds[guild_id]
         guild_name = self.bot.get_guild(guild_id)
 
         with db:
-            with db.bind_ctx([Message, MessageIndex]):
-                # Messages de l'utilisateur dans la période
-                query = (
-                    Message.select(
-                        fn.DATE(Message.timestamp).alias("date"),
-                        (
-                            fn.SUM(MessageIndex.match(expression1))
-                            / fn.COUNT(Message.message_id).cast("REAL")
-                        ).alias("expression1"),
-                        (
-                            fn.SUM(MessageIndex.match(expression2))
-                            / fn.COUNT(Message.message_id).cast("REAL")
-                        ).alias("expression2"),
+            with db.bind_ctx([Message, MessageIndex, MessageDay]):
+
+                if periode.value == 9999:
+                    oldest_date: MessageDay = (
+                        MessageDay.select().order_by(MessageDay.date.asc()).get()
                     )
-                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
-                    .where(fn.DATE(Message.timestamp) >= jour_debut)
-                    .where(fn.DATE(Message.timestamp) <= jour_fin)
-                    .group_by(fn.DATE(Message.timestamp))
+                    jour_debut = oldest_date.date
+
+                jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
+
+                # Messages de l'utilisateur dans la période
+                query1_str = """
+                    SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as expression1
+                    FROM messageindex
+                    JOIN message ON messageindex.rowid = message.message_id
+                    JOIN messageday ON DATE(message.timestamp)=messageday.date
+                    WHERE messageindex MATCH ?
+                    AND DATE(message.timestamp) >= ?
+                    AND DATE(message.timestamp) <= ?
+                    GROUP BY DATE(message.timestamp)
+                    ORDER BY DATE(message.timestamp);"""
+                query1 = RawQuery(
+                    query1_str,
+                    params=([expression1_fts, jour_debut, jour_fin]),
+                )
+                query2_str = """
+                    SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as expression2
+                    FROM messageindex
+                    JOIN message ON messageindex.rowid = message.message_id
+                    JOIN messageday ON DATE(message.timestamp)=messageday.date
+                    WHERE messageindex MATCH ?
+                    AND DATE(message.timestamp) >= ?
+                    AND DATE(message.timestamp) <= ?
+                    GROUP BY DATE(message.timestamp)
+                    ORDER BY DATE(message.timestamp);"""
+                query2 = RawQuery(
+                    query2_str,
+                    params=([expression2_fts, jour_debut, jour_fin]),
                 )
 
+                # Query 1
                 logging.info("Executing database request...")
-                query_sql, query_params = query.sql()
-                df = pandas.read_sql_query(
+                query_sql, query_params = query1.sql()
+                df1 = pandas.read_sql_query(
+                    query_sql, db.connection(), params=query_params
+                )
+                logging.info("Database request answered.")
+
+                # Query 2
+                logging.info("Executing database request...")
+                query_sql, query_params = query2.sql()
+                df2 = pandas.read_sql_query(
                     query_sql, db.connection(), params=query_params
                 )
                 logging.info("Database request answered.")
@@ -243,19 +270,26 @@ class Activity(commands.Cog):
         if custom_emoji_str:
             expression2 = custom_emoji_str
 
-        # Renommage des colonnes
-        df = df.rename(columns={"expression1": expression1, "expression2": expression2})
-
         # Remplir les dates manquantes
-        df = df.set_index("date")
-        df.index = pandas.DatetimeIndex(df.index)
+        idx = pandas.date_range(jour_debut, jour_fin)
+        df1 = df1.set_index("date")
+        df1.index = pandas.DatetimeIndex(df1.index)
+        df1 = df1.reindex(idx, fill_value=0)
+        df2 = df2.set_index("date")
+        df2.index = pandas.DatetimeIndex(df2.index)
+        df2 = df2.reindex(idx, fill_value=0)
+
+        df = pandas.concat([df1, df2], axis=1)
 
         # Rolling average
-        df[expression1] = df.get(expression1).rolling(ROLLING_AVERAGE).mean()
-        df[expression2] = df.get(expression2).rolling(ROLLING_AVERAGE).mean()
+        df["expression1"] = df.get("expression1").rolling(ROLLING_AVERAGE).mean()
+        df["expression2"] = df.get("expression2").rolling(ROLLING_AVERAGE).mean()
 
         # Remove NaN values
         df = df.dropna()
+
+        # Rename columns
+        df = df.rename(columns={"expression1": expression1, "expression2": expression2})
 
         title_lines = textwrap.wrap(f"<b>'{expression1}'</b> vs <b>'{expression2}'</b>")
         title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
@@ -285,19 +319,12 @@ class Activity(commands.Cog):
             )
         )
 
-        return fig.to_image(format="png", scale=2)
+        img = fig.to_image(format="png", scale=2)
 
-    async def cog_command_error(self, ctx: commands.Context, error):
-        if isinstance(error, Maintenance):
-            await ctx.send(
-                "Cette fonctionnalité est en maintenance et sera de retour très bientôt ! 🐝"
-            )
-        elif isinstance(
-            error, (commands.BadArgument, commands.MissingRequiredArgument)
-        ):
-            await ctx.send("Vous avez mal utilisé la commande ! 🐝")
-        else:
-            await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
+        # Envoyer image
+        await interaction.followup.send(
+            file=discord.File(io.BytesIO(img), "abeille.png"),
+        )
 
     @app_commands.command(
         name="rank", description="Votre classement dans l'utilisation d'une expression."
@@ -367,6 +394,18 @@ class Activity(commands.Cog):
             result = f"Vous êtes le **{rank}ème** membre à avoir le plus employé l'expression *{expression}*."
 
         await interaction.followup.send(result)
+
+    async def cog_command_error(self, ctx: commands.Context, error):
+        if isinstance(error, Maintenance):
+            await ctx.send(
+                "Cette fonctionnalité est en maintenance et sera de retour très bientôt ! 🐝"
+            )
+        elif isinstance(
+            error, (commands.BadArgument, commands.MissingRequiredArgument)
+        ):
+            await ctx.send("Vous avez mal utilisé la commande ! 🐝")
+        else:
+            await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
 
 
 async def setup(bot):
