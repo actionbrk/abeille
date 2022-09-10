@@ -1,6 +1,12 @@
-from peewee import BigIntegerField, DateTimeField, Model, TextField, CharField
-from playhouse.sqlite_ext import FTS5Model, FTSModel, SearchField, RowIDField
-from playhouse.shortcuts import ThreadSafeDatabaseMetadata
+from peewee import (
+    BigIntegerField,
+    CharField,
+    DateField,
+    DateTimeField,
+    Model,
+    TextField,
+)
+from playhouse.sqlite_ext import FTS5Model, SearchField
 
 
 class Message(Model):
@@ -14,6 +20,13 @@ class Message(Model):
     attachment_url = TextField(null=True)
 
 
+class MessageDay(Model):
+    """Messages count per day"""
+
+    date = DateField(primary_key=True)
+    count = BigIntegerField()
+
+
 class MessageIndex(FTS5Model):
     """Message Index"""
 
@@ -25,4 +38,5 @@ class MessageIndex(FTS5Model):
         options = {
             "content_rowid": Message.message_id,
             "content": Message,
+            "tokenize": "trigram",
         }
