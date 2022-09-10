@@ -301,7 +301,7 @@ class Activity(commands.Cog):
             template="plotly_dark",
             title=title,
             render_mode="svg",
-            labels={"date": "", "variable": ""},
+            labels={"index": ""},
         )
 
         # Hide y-axis
@@ -316,7 +316,6 @@ class Activity(commands.Cog):
                 yanchor="bottom",
                 x=0.5,
                 xanchor="center",
-                labels={"index": ""},
             )
         )
 
