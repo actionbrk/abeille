@@ -316,6 +316,7 @@ class Activity(commands.Cog):
                 yanchor="bottom",
                 x=0.5,
                 xanchor="center",
+                labels={"index": ""},
             )
         )
 
