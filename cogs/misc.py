@@ -2,7 +2,7 @@ import hashlib
 import os
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, List, Optional
 
 import discord
 from common.utils import DEV_GUILD
@@ -13,6 +13,7 @@ from peewee import SQL
 from discord.app_commands import Choice
 
 from cogs.tracking import get_tracking_cog
+from views.random import RandomView
 
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
@@ -20,6 +21,8 @@ hash_name: str = os.getenv("HASHNAME")  # type:ignore
 
 
 class Misc(commands.Cog):
+    """Miscellaneous commands"""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -79,7 +82,7 @@ class Misc(commands.Cog):
 
         with db:
             with db.bind_ctx([Message]):
-                params_list = [channel_id]
+                params_list: List[Any] = [channel_id]
                 query_str = [
                     """
                     message_id > ((SELECT min(message_id) FROM message) + (
@@ -118,7 +121,10 @@ class Misc(commands.Cog):
                 text_to_send.append(message.content)
             if message.attachment_url:
                 text_to_send.append(message.attachment_url)
-            await interaction.followup.send("\n".join(text_to_send))
+            await interaction.followup.send(
+                "\n".join(text_to_send),
+                view=RandomView(channel_id, media, length, member, db),
+            )
             if fallback_channel:
                 await interaction.followup.send(
                     f"Le salon spécifié étant NSFW, le /random a été réalisé sur le salon <#{fallback_channel.id}>.",
