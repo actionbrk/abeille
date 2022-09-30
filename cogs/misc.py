@@ -131,10 +131,6 @@ class Misc(commands.Cog):
                     ephemeral=True,
                 )
 
-        # Delete message in 2 minutes
-        await asyncio.sleep(120)
-        await interaction.delete_original_response()
-
     @commands.command()
     @commands.is_owner()
     async def sync(self, ctx: commands.Context):
