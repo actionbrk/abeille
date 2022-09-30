@@ -110,7 +110,7 @@ class Misc(commands.Cog):
 
         if message is None:
             await interaction.followup.send(
-                f"Je n'ai pas trouvé de message correspondant sur le salon <#{interaction.channel_id}>."
+                f"Je n'ai pas trouvé de message correspondant sur le salon <#{channel_id}>."
             )
         else:
             text_to_send = []
