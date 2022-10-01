@@ -162,16 +162,13 @@ class RandomView(discord.ui.View):
 
         guild_id_str = str(guild_id)
         self.again_role_needed = None
-        if guild_id_str in config["RandomNeedsRole"]:
-            self.again_role_needed = config["RandomNeedsRole"][guild_id_str]
-        if guild_id_str in config["RandomAgainEmoji"]:
-            self.again.emoji = config["RandomAgainEmoji"][guild_id_str]
+        if config.has_option("RandomNeedsRole", guild_id_str):
+            self.again_role_needed = config.get("RandomNeedsRole", guild_id_str)
+        if config.has_option("RandomAgainEmoji", guild_id_str):
+            self.again.emoji = config.get("RandomAgainEmoji", guild_id_str)
 
     @discord.ui.button(label="Encore", style=discord.ButtonStyle.primary)
     async def again(self, interaction: discord.Interaction, button: discord.ui.Button):
-        config = configparser.ConfigParser(allow_no_value=True)
-        p = pathlib.Path(__file__).parent.parent
-        config.read(p / "config.ini")
         if self.again_role_needed:
             if interaction.user.get_role(int(self.again_role_needed)) is None:
                 role_needed = interaction.guild.get_role(int(self.again_role_needed))
