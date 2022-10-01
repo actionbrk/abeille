@@ -156,10 +156,10 @@ class RandomView(discord.ui.View):
         self.db = db
         self.guild_id = guild_id
 
+        # TODO: Config information should be loaded at startup in TrackedGuild object (tracking.py)
         config = configparser.ConfigParser(allow_no_value=True)
         p = pathlib.Path(__file__).parent.parent
         config.read(p / "config.ini")
-
         guild_id_str = str(guild_id)
         self.again_role_needed = None
         if config.has_option("RandomNeedsRole", guild_id_str):

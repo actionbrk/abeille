@@ -1,12 +1,12 @@
 import datetime
 import logging
 import time
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import discord
 from discord.abc import Snowflake
 from discord.ext import commands
-from peewee import Database, DoesNotExist
+from peewee import Database, DoesNotExist, fn
 
 from models.message import Message
 from cogs.tracking import get_message, get_tracked_guild
@@ -246,7 +246,8 @@ class History(commands.Cog):
     @commands.is_owner()
     async def channels(self, ctx: commands.Context, guild_id: int):
         """Known channels"""
-        db = get_tracked_guild(self.bot, guild_id).database
+        tracked_guild = get_tracked_guild(self.bot, guild_id)
+        db = tracked_guild.database
         guild = self.bot.get_guild(guild_id)
 
         if guild is None:
@@ -254,19 +255,66 @@ class History(commands.Cog):
             return
 
         # Récupérer liste channels connus
-        known_channels = await self._get_known_channels(db)
+        known_channels: List[Tuple[discord.TextChannel, int]] = []
+
+        # Saved channels but cannot be retrieved
+        unknown_channels: List[Tuple[int, int]] = []
+
+        with db:
+            with db.bind_ctx([Message]):
+                for channel_count in Message.select(
+                    Message.channel_id, fn.COUNT(Message.channel_id).alias("count")
+                ).group_by(Message.channel_id):
+                    known_channel = self.bot.get_channel(channel_count.channel_id)
+                    if isinstance(known_channel, discord.TextChannel):
+                        known_channels.append((known_channel, channel_count.count))
+                    else:
+                        unknown_channels.append(
+                            (channel_count.channel_id, channel_count.count)
+                        )
         if not known_channels:
             await ctx.send("Aucun channel connu, d'abord utiliser saveall ou save")
             return
-        await ctx.send(
-            f"J'ai trouvé **{len(known_channels)}** channels connus en db..."
+
+        embed = discord.Embed(
+            title="Salons",
+            description=f"Résumé des salons enregistrés sur le serveur **{guild.name}**.",
+        )
+        embed.set_author(name=guild.name, icon_url=guild.icon.url)
+        known_channels_str = "\n".join(
+            [
+                f"{channel.name} - {msg_count} message(s)"
+                for channel, msg_count in known_channels
+            ]
+        )
+        unknown_channels_str = "\n".join(
+            [
+                f"`{channel_id}` - {msg_count} message(s)"
+                for channel_id, msg_count in unknown_channels
+            ]
+        )
+        embed.add_field(
+            name="Salons enregistrés", value=known_channels_str, inline=False
+        )
+        embed.add_field(
+            name="Salons inconnus", value=unknown_channels_str, inline=False
         )
 
-        # Parcours channels
-        channels_names = []
-        for channel in known_channels:
-            channels_names.append(channel.name)
-        await ctx.send("\n".join(channels_names))
+        # Ignored channels
+        ignored_channels_str = "Aucun salon ignoré."
+        if tracked_guild.ignored_channels_ids:
+            ignored_channels_strs = []
+            for ignored_channel_id in tracked_guild.ignored_channels_ids:
+                ignored_channel = self.bot.get_channel(ignored_channel_id)
+                if isinstance(ignored_channel, discord.TextChannel):
+                    ignored_channels_strs.append(ignored_channel.name)
+                else:
+                    ignored_channels_strs.append(f"`{ignored_channel_id}`")
+            ignored_channels_str = "\n".join(ignored_channels_strs)
+
+        embed.add_field(name="Salons ignorés", value=ignored_channels_str, inline=False)
+
+        await ctx.send(embed=embed)
 
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
         """Récupérer la liste des channels connus en db"""
