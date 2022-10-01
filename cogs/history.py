@@ -9,7 +9,7 @@ from discord.ext import commands
 from peewee import Database, DoesNotExist
 
 from models.message import Message
-from cogs.tracking import get_message, get_tracking_cog
+from cogs.tracking import get_message, get_tracked_guild
 
 
 class SaveResult:
@@ -33,16 +33,16 @@ class History(commands.Cog):
     @commands.is_owner()
     async def saveold(self, ctx: commands.Context, channel_id: int, count: int):
         """Saves older messages in this channel"""
-        tracking_cog = get_tracking_cog(self.bot)
         channel = self.bot.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
             await ctx.reply(f"Impossible de trouver ce salon ({channel_id})")
             return
 
-        db = tracking_cog.tracked_guilds[channel.guild.id]
+        tracked_guild = get_tracked_guild(self.bot, channel.guild.id)
+        db = tracked_guild.database
 
         # Si channel ignoré, passer
-        if channel.id in tracking_cog.ignored_channels:
+        if channel.id in tracked_guild.ignored_channels_ids:
             await ctx.send(f"Channel {channel.name} ignoré")
             return
 
@@ -73,13 +73,13 @@ class History(commands.Cog):
     async def save(self, ctx: commands.Context, channel_id: int, count: int = 20):
         """Sauvegarde les messages dans le passé à partir d'ici"""
         channel = self.bot.get_channel(channel_id)
-        tracking_cog = get_tracking_cog(self.bot)
         if not isinstance(channel, discord.TextChannel):
             await ctx.reply(f"Impossible de trouver ce salon ({channel_id})")
             return
 
         # Si channel ignoré, passer
-        if channel.id in tracking_cog.ignored_channels:
+        tracked_guild = get_tracked_guild(self.bot, channel.guild.id)
+        if channel.id in tracked_guild.ignored_channels_ids:
             await ctx.send(f"Channel {channel.name} ignoré")
             return
 
@@ -97,12 +97,13 @@ class History(commands.Cog):
         """Sauvegarde les messages de tous les channels possibles à partir d'ici"""
         save_results = {}
         impossible_channels = []
-        tracking_cog = get_tracking_cog(self.bot)
 
         guild = self.bot.get_guild(guild_id)
         if guild is None:
             await ctx.reply("Je ne trouve pas cette guild")
             return
+
+        tracked_guild = get_tracked_guild(self.bot, guild_id)
 
         # Détection des channels
         for channel in guild.channels:
@@ -110,7 +111,7 @@ class History(commands.Cog):
                 continue
 
             # Si channel ignoré, passer
-            if channel.id in tracking_cog.ignored_channels:
+            if channel.id in tracked_guild.ignored_channels_ids:
                 await ctx.send(f"Channel {channel.name} ignoré")
                 continue
 
@@ -134,8 +135,7 @@ class History(commands.Cog):
     @commands.is_owner()
     async def saveoldall(self, ctx: commands.Context, guild_id: int, count: int = 20):
         """Save old sur les channels connus en db"""
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
+        db = get_tracked_guild(self.bot, guild_id).database
         guild = self.bot.get_guild(guild_id)
 
         if guild is None:
@@ -201,9 +201,8 @@ class History(commands.Cog):
         oldest_first: bool = None,
     ) -> SaveResult:
         """Enregistre les messages d'un channel dans la BDD associée"""
-        tracking_cog = get_tracking_cog(self.bot)
         guild = channel.guild
-        db: Database = tracking_cog.tracked_guilds[guild.id]
+        db = get_tracked_guild(self.bot, guild.id).database
 
         save_result = SaveResult()
 
@@ -247,8 +246,7 @@ class History(commands.Cog):
     @commands.is_owner()
     async def channels(self, ctx: commands.Context, guild_id: int):
         """Known channels"""
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
+        db = get_tracked_guild(self.bot, guild_id).database
         guild = self.bot.get_guild(guild_id)
 
         if guild is None:

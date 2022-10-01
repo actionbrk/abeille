@@ -6,7 +6,7 @@ from typing import Any, List, Optional
 import discord
 import os
 from peewee import SQL, Database
-from cogs.tracking import get_tracking_cog
+from cogs.tracking import get_tracked_guild
 
 from models.message import Message
 from discord import app_commands
@@ -68,8 +68,7 @@ class Random(commands.Cog):
             else:
                 channel_id = channel.id
 
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[interaction.guild_id]
+        db = get_tracked_guild(self.bot, interaction.guild_id).database
 
         message = await get_random_message(db, channel_id, media, length, member)
 

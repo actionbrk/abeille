@@ -6,7 +6,7 @@ import os
 import discord
 from discord.ext import commands
 
-from cogs.tracking import get_tracking_cog
+from cogs.tracking import get_tracked_guild, get_tracked_guilds
 from models.message import Message, MessageIndex
 
 # Chargement paramètres DB
@@ -32,8 +32,8 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def optimize(self, ctx: commands.Context):
         """Optimize MessageIndex of every databases"""
-        tracking_cog = get_tracking_cog(self.bot)
-        for guild_id, db in tracking_cog.tracked_guilds.items():
+        for guild_id, tracked_guild in get_tracked_guilds(self.bot).items():
+            db = tracked_guild.database
             with db:
                 with db.bind_ctx([MessageIndex]):
                     logging.info("Optimizing %s...", str(guild_id))
@@ -44,13 +44,12 @@ class Admin(commands.Cog):
     @commands.is_owner()
     async def rebuild(self, ctx: commands.Context):
         """Rebuild MessageIndex of every databases"""
-        tracking_cog = get_tracking_cog(self.bot)
-        for guild_id, db in tracking_cog.tracked_guilds.items():
-            with db:
-                with db.bind_ctx([MessageIndex]):
-                    logging.info("Rebuilding %s...", str(guild_id))
-                    MessageIndex.rebuild()
-                    logging.info("Rebuilt.")
+        for guild_id, tracked_guild in get_tracked_guilds(self.bot).items():
+            db = tracked_guild.database
+            with db.bind_ctx([MessageIndex]):
+                logging.info("Rebuilding %s...", str(guild_id))
+                MessageIndex.rebuild()
+                logging.info("Rebuilt.")
 
     @commands.command(name="recap", aliases=["récap"])
     @commands.guild_only()
@@ -69,8 +68,7 @@ class Admin(commands.Cog):
 
     async def _check(self, ctx: commands.Context, guild_id: int):
         """Vérifie quels channels sont enregistrés"""
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
+        db = get_tracked_guild(self.bot, guild_id).database
         guild = self.bot.get_guild(guild_id)
         if guild is None:
             await ctx.reply(f"Guild inconnue ({guild_id})")

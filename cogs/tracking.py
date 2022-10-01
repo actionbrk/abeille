@@ -13,6 +13,8 @@ from models.message import Message, MessageDay, MessageIndex
 from peewee import Database, DoesNotExist, OperationalError
 from playhouse.sqlite_ext import SqliteExtDatabase
 
+from models.trackedguild import TrackedGuild
+
 # Chargement .env
 # load_dotenv()
 salt = os.getenv("SALT").encode()  # type:ignore
@@ -44,12 +46,20 @@ def get_message(message: discord.Message) -> Message:
     )
 
 
-def get_tracking_cog(bot: commands.Bot) -> "Tracking":
-    """Récupérer le cog Tracking"""
+def get_tracked_guild(bot: commands.Bot, guild_id: int) -> TrackedGuild:
+    """Get tracked guild from ID"""
     tracking_cog: Optional["Tracking"] = bot.get_cog("Tracking")  # type: ignore
     if tracking_cog is None:
         raise Exception("Impossible de récupérer le cog Tracking")
-    return tracking_cog
+    return tracking_cog.tracked_guilds[guild_id]
+
+
+def get_tracked_guilds(bot: commands.Bot) -> Dict[int, TrackedGuild]:
+    """Get tracked guilds"""
+    tracking_cog: Optional["Tracking"] = bot.get_cog("Tracking")  # type: ignore
+    if tracking_cog is None:
+        raise Exception("Impossible de récupérer le cog Tracking")
+    return tracking_cog.tracked_guilds
 
 
 class Tracking(commands.Cog):
@@ -58,10 +68,9 @@ class Tracking(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-        self.tracked_guilds: Dict[int, Database] = {}
-        self.ignored_channels: List[int] = []
+        self.tracked_guilds: Dict[int, TrackedGuild] = {}
 
-        # Actualiser self.tracked_guilds au démarrage
+        # Update self.tracked_guilds on start
         self._load_tracked_guilds()
 
     def get_guild_db(self, guild_id) -> Optional[Database]:
@@ -69,7 +78,7 @@ class Tracking(commands.Cog):
         return self.tracked_guilds.get(guild_id)
 
     def _load_tracked_guilds(self):
-        """Charger les guilds à tracker et les channels à ignorer"""
+        """Load tracked guilds and their settings"""
         logging.info("Loading tracked guilds...")
         config = configparser.ConfigParser(allow_no_value=True)
         p = pathlib.Path(__file__).parent.parent
@@ -77,12 +86,11 @@ class Tracking(commands.Cog):
         for guild_id_str in config["Tracked"]:
             guild_id = int(guild_id_str)
 
-            # TODO: Custom db folder path (outside of project folder....)
             new_db = SqliteExtDatabase(pathlib.Path(dbs_folder_path) / f"{guild_id}.db")
 
             try:
                 new_db.connect()
-                self.tracked_guilds[guild_id] = new_db
+                tracked_guild = TrackedGuild(new_db)
             except OperationalError:
                 logging.error("Base de données indisponible pour %s", guild_id_str)
                 continue
@@ -111,26 +119,29 @@ class Tracking(commands.Cog):
                     except Exception as exc:
                         logging.warning("Triggers could not be created: %s", exc)
 
-                    # TODO: Commande dédiée ? MessageIndex.rebuild()
-                    # TODO: Commande dédiée ? MessageIndex.optimize()
+            # Ignorer channels
+            if config.has_section("IgnoredChannels") and config.has_option(
+                "IgnoredChannels", guild_id_str
+            ):
+                logging.info("Loading ignored channels...")
+                ignored_channels_ids = [
+                    int(ignored_channel_str.strip())
+                    for ignored_channel_str in config.get(
+                        "IgnoredChannels", guild_id_str
+                    ).split(",")
+                ]
+                tracked_guild.ignored_channels_ids = ignored_channels_ids
+                logging.info(
+                    "%d channel(s) ignored for tracked guild %d.",
+                    len(ignored_channels_ids),
+                    guild_id,
+                )
 
+            self.tracked_guilds[guild_id] = tracked_guild
             logging.info("Guild '%s' is tracked.", guild_id_str)
 
         total_tracked = len(self.tracked_guilds)
         logging.info("%d guild(s) are being tracked.", total_tracked)
-
-        # Ignorer channels
-        logging.info("Loading ignored guilds...")
-        for section in config.sections():
-            try:
-                section_int = int(section)
-            except ValueError:
-                continue
-            if section_int in self.tracked_guilds:
-                for channel_id_str in config[section]:
-                    channel_id = int(channel_id_str)
-                    self.ignored_channels.append(channel_id)
-                    logging.info("Channel '%d' is ignored.", channel_id)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -153,11 +164,13 @@ class Tracking(commands.Cog):
         if not guild_id in self.tracked_guilds:
             return
 
+        tracked_guild = self.tracked_guilds[guild_id]
+
         # Si channel ignoré
-        if message.channel.id in self.ignored_channels:
+        if message.channel.id in tracked_guild.ignored_channels_ids:
             return
 
-        db = self.tracked_guilds[guild_id]
+        db = tracked_guild.database
 
         msg = get_message(message)
 
@@ -182,11 +195,13 @@ class Tracking(commands.Cog):
         if not guild_id in self.tracked_guilds:
             return
 
+        tracked_guild = self.tracked_guilds[guild_id]
+
         # Si channel ignoré
-        if message.channel.id in self.ignored_channels:
+        if message.channel.id in tracked_guild.ignored_channels_ids:
             return
 
-        db = self.tracked_guilds[guild_id]
+        db = tracked_guild.database
 
         # Supprimer
         with db:
@@ -211,11 +226,13 @@ class Tracking(commands.Cog):
         if not guild_id in self.tracked_guilds:
             return
 
+        tracked_guild = self.tracked_guilds[guild_id]
+
         # Si channel ignoré
-        if after.channel.id in self.ignored_channels:
+        if after.channel.id in tracked_guild.ignored_channels_ids:
             return
 
-        db = self.tracked_guilds[guild_id]
+        db = tracked_guild.database
 
         msg = get_message(after)
 

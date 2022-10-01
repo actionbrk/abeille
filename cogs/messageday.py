@@ -4,9 +4,8 @@ from datetime import date
 import discord
 from discord.ext import commands, tasks
 from peewee import RawQuery
+from cogs.tracking import get_tracked_guilds
 from models import message
-
-from cogs.tracking import get_tracking_cog
 
 
 class MessageDay(commands.Cog):
@@ -29,9 +28,9 @@ class MessageDay(commands.Cog):
 
     async def _update_messageday(self):
         until_day = date.today()
-        tracking_cog = get_tracking_cog(self.bot)
 
-        for guild_id, db in tracking_cog.tracked_guilds.items():
+        for guild_id, tracked_guild in get_tracked_guilds(self.bot).items():
+            db = tracked_guild.database
             with db:
                 with db.bind_ctx([message.MessageDay]):
                     logging.info("Updating MessageDay for guild %s...", str(guild_id))

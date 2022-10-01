@@ -19,7 +19,7 @@ from discord.ext import commands
 from models.message import Message, MessageDay, MessageIndex
 from peewee import RawQuery, Select, fn
 
-from cogs.tracking import get_tracking_cog
+from cogs.tracking import get_tracked_guild
 
 PERIODE = 1100
 ROLLING_AVERAGE = 14
@@ -75,8 +75,7 @@ class Activity(commands.Cog):
 
         jour_debut = date.today() - timedelta(days=periode.value)
         jour_fin = None
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
+        db = get_tracked_guild(self.bot, guild_id).database
         guild_name = self.bot.get_guild(guild_id)
 
         with db:
@@ -201,8 +200,7 @@ class Activity(commands.Cog):
 
         jour_debut = date.today() - timedelta(days=periode.value)
         jour_fin = None
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
+        db = get_tracked_guild(self.bot, guild_id).database
         guild_name = self.bot.get_guild(guild_id)
 
         with db:
@@ -356,8 +354,7 @@ class Activity(commands.Cog):
             await interaction.followup.send("Can't find guild id.")
             return
 
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild_id]
+        db = get_tracked_guild(self.bot, guild_id).database
 
         with db:
             with db.bind_ctx([Message, MessageIndex]):

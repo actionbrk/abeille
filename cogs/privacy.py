@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from peewee import DoesNotExist
 
 from models.message import Message
-from cogs.tracking import get_tracking_cog
+from cogs.tracking import get_tracked_guild
 
 # Chargement paramètres DB
 # load_dotenv()
@@ -41,8 +41,7 @@ class Privacy(commands.Cog):
             await ctx.reply("Guild inconnue")
             return
 
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild.id]
+        db = get_tracked_guild(self.bot, guild.id).database
 
         msg_bot = await ctx.author.send(
             f"Je nettoie vos données concernant la guild **{guild.name}**... 🐝"
@@ -96,8 +95,7 @@ class Privacy(commands.Cog):
         ).hex()
         guild = interaction.guild
 
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild.id]
+        db = get_tracked_guild(self.bot, guild.id).database
 
         temp_csv_path = f"/tmp/export_{author_id[:5]}.csv"
         temp_zip_path = f"/tmp/export_{author_id[:5]}.zip"
@@ -159,8 +157,7 @@ class Privacy(commands.Cog):
             await ctx.reply("Guild inconnue")
             return
 
-        tracking_cog = get_tracking_cog(self.bot)
-        db = tracking_cog.tracked_guilds[guild.id]
+        db = get_tracked_guild(self.bot, guild.id).database
 
         # TODO: Parcourir chaque db
         with db:
