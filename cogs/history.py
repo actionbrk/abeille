@@ -325,7 +325,8 @@ class History(commands.Cog):
                     ignored_channels_strs.append(f"`{ignored_channel_id}`")
             ignored_channels_str = "\n".join(ignored_channels_strs)
             ignored_channels_str = self._append_hidden_channels_str(
-                known_channels_str, len(tracked_guild.ignored_channels_ids[max_lines:])
+                ignored_channels_str,
+                len(tracked_guild.ignored_channels_ids[max_lines:]),
             )
 
         embed.add_field(name="Salons ignorés", value=ignored_channels_str, inline=False)
