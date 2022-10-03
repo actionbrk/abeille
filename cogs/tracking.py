@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 
 import discord
 from discord.ext import commands
+from models.identity import Identity
 from models.message import Message, MessageDay, MessageIndex
 from peewee import Database, DoesNotExist, OperationalError
 from playhouse.sqlite_ext import SqliteExtDatabase
@@ -97,11 +98,10 @@ class Tracking(commands.Cog):
             finally:
                 new_db.close()
 
-            # Création tables
             with new_db:
-                with new_db.bind_ctx([Message, MessageIndex, MessageDay]):
+                with new_db.bind_ctx([Message, MessageIndex, MessageDay, Identity]):
                     # Création tables
-                    new_db.create_tables([Message, MessageIndex, MessageDay])
+                    new_db.create_tables([Message, MessageIndex, MessageDay, Identity])
                     # Création triggers
                     try:
                         new_db.execute_sql(

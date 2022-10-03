@@ -6,6 +6,7 @@ import logging
 import os
 import textwrap
 from datetime import date, timedelta
+from typing import List
 
 import discord
 import pandas
@@ -16,8 +17,9 @@ from common.utils import emoji_to_str
 from discord import app_commands
 from discord.app_commands import Choice
 from discord.ext import commands
+from models.identity import Identity
 from models.message import Message, MessageDay, MessageIndex
-from peewee import RawQuery, Select, fn
+from peewee import RawQuery, Select, fn, DoesNotExist
 
 from cogs.tracking import get_tracked_guild
 
@@ -332,7 +334,7 @@ class Activity(commands.Cog):
     )
     @app_commands.guild_only()
     async def rank_slash(self, interaction: discord.Interaction, expression: str):
-        await interaction.response.defer(thinking=True)
+        max_lines = 3
         expression = expression.strip()
 
         # FTS5 : can't tokenize expressions with less than 3 characters
@@ -354,10 +356,12 @@ class Activity(commands.Cog):
             await interaction.followup.send("Can't find guild id.")
             return
 
+        is_interaction_user_registered = False
+
         db = get_tracked_guild(self.bot, guild_id).database
 
         with db:
-            with db.bind_ctx([Message, MessageIndex]):
+            with db.bind_ctx([Message, MessageIndex, Identity]):
                 rank_query = fn.rank().over(
                     order_by=[fn.COUNT(Message.message_id).desc()]
                 )
@@ -379,6 +383,58 @@ class Activity(commands.Cog):
 
                 rank = query.scalar()
 
+                query_messages = (
+                    Message.select()
+                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
+                    .where(MessageIndex.match(expression_fts))
+                    .group_by(Message.author_id)
+                    .order_by(fn.COUNT(Message.message_id).desc())
+                )
+                messages: List[Message] = list(query_messages)
+
+                if messages:
+                    result_list = [
+                        f"**{len(messages)}** membres ont déjà utilisé l'expression *{expression}*.\n"
+                    ]
+                    for idx, message in enumerate(messages[:max_lines], 1):
+                        # Try to get real user ID if registered
+                        user = None
+                        try:
+                            identity: Identity = Identity.get_by_id(message.author_id)
+                            # TODO: get_user ????
+                            user = await self.bot.fetch_user(identity.real_author_id)
+                        except DoesNotExist:
+                            pass
+
+                        # If user is executing the command OR it is registered
+                        if author_id == message.author_id:
+                            user_str = interaction.user.mention
+                        elif user is not None:
+                            user_str = user.mention
+                        else:
+                            user_str = "?????"
+
+                        if idx == 1:
+                            result_list.append(f"🥇 {user_str}")
+                        elif idx == 2:
+                            result_list.append(f"🥈 {user_str}")
+                        elif idx == 3:
+                            result_list.append(f"🥉 {user_str}")
+                        else:
+                            result_list.append(f"{idx}. {user_str}")
+
+                else:
+                    result_list = [
+                        "Cette expression n'a jamais été employée sur ce serveur."
+                    ]
+
+                # Check if interaction user is registered
+                try:
+                    identity = Identity.get_by_id(author_id)
+                    is_interaction_user_registered = True
+                except DoesNotExist:
+                    pass
+
         if rank is None:
             result = f"Vous n'avez jamais employé l'expression *{expression}*."
         elif rank == 1:
@@ -390,7 +446,78 @@ class Activity(commands.Cog):
         else:
             result = f"Vous êtes le **{rank}ème** membre à avoir le plus employé l'expression *{expression}*."
 
-        await interaction.followup.send(result)
+        result += "\n\n" + "\n".join(result_list)
+
+        await interaction.response.send_message(result)
+
+        if not is_interaction_user_registered:
+            await interaction.followup.send(
+                "Pour afficher systématiquement votre pseudo dans les classements, Abeille a besoin de stocker votre identifiant utilisateur. Utilisez la commande **/register** pour cela. Il sera toujours possible de supprimer cette donnée d'Abeille avec la commande **/unregister**. 🐝",
+                ephemeral=True,
+            )
+
+    @app_commands.command(
+        name="register",
+        description="Autoriser Abeille à stocker votre identifiant utilisateur.",
+    )
+    @app_commands.guild_only()
+    async def register(self, interaction: discord.Interaction):
+        """Allow Abeille to display user name"""
+        db = get_tracked_guild(self.bot, interaction.guild_id).database
+
+        author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(interaction.user.id).encode(), salt, iterations
+        ).hex()
+
+        with db:
+            with db.bind_ctx([Identity]):
+                try:
+                    Identity.get_by_id(author_id)
+                    await interaction.response.send_message(
+                        "Vous avez déjà autorisé Abeille à stocker votre identifiant utilisateur. 🐝",
+                        ephemeral=True,
+                    )
+                except DoesNotExist:
+                    identity = Identity(
+                        author_id=author_id, real_author_id=interaction.user.id
+                    )
+                    identity.save(force_insert=True)
+                    await interaction.response.send_message(
+                        "Abeille stocke votre identifiant utilisateur. Utilisez /unregister pour le supprimer. 🐝",
+                        ephemeral=True,
+                    )
+
+    @app_commands.command(
+        name="unregister",
+        description="Supprimer votre identifiant utilisateur d'Abeille.",
+    )
+    @app_commands.guild_only()
+    async def unregister(self, interaction: discord.Interaction):
+        """Disallow Abeille to display user name"""
+        db = get_tracked_guild(self.bot, interaction.guild_id).database
+
+        author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(interaction.user.id).encode(), salt, iterations
+        ).hex()
+
+        with db:
+            with db.bind_ctx([Identity]):
+                try:
+                    identity = Identity.get_by_id(author_id)
+                    identity.delete_instance()
+                    await interaction.response.send_message(
+                        "Votre identifiant utilisateur est désormais inconnu d'Abeille. Utilisez /register pour réautoriser. 🐝",
+                        ephemeral=True,
+                    )
+                except DoesNotExist:
+                    identity = Identity(
+                        author_id=author_id, real_author_id=interaction.user.id
+                    )
+                    identity.save()
+                    await interaction.response.send_message(
+                        "Tout va bien : Abeille ne stocke pas votre identifiant utilisateur. 🐝",
+                        ephemeral=True,
+                    )
 
     async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, Maintenance):
