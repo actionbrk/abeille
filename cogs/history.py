@@ -246,6 +246,8 @@ class History(commands.Cog):
     @commands.is_owner()
     async def channels(self, ctx: commands.Context, guild_id: int):
         """Known channels"""
+        max_lines = 15
+
         tracked_guild = get_tracked_guild(self.bot, guild_id)
         db = tracked_guild.database
         guild = self.bot.get_guild(guild_id)
@@ -262,9 +264,13 @@ class History(commands.Cog):
 
         with db:
             with db.bind_ctx([Message]):
-                for channel_count in Message.select(
-                    Message.channel_id, fn.COUNT(Message.channel_id).alias("count")
-                ).group_by(Message.channel_id):
+                for channel_count in (
+                    Message.select(
+                        Message.channel_id, fn.COUNT(Message.channel_id).alias("count")
+                    )
+                    .group_by(Message.channel_id)
+                    .order_by(fn.COUNT(Message.channel_id).desc())
+                ):
                     known_channel = self.bot.get_channel(channel_count.channel_id)
                     if isinstance(known_channel, discord.TextChannel):
                         known_channels.append((known_channel, channel_count.count))
@@ -284,14 +290,21 @@ class History(commands.Cog):
         known_channels_str = "\n".join(
             [
                 f"{channel.name} - {msg_count} message(s)"
-                for channel, msg_count in known_channels
+                for channel, msg_count in known_channels[:max_lines]
             ]
         )
+        known_channels_str = self._append_hidden_channels_str(
+            known_channels_str, len(known_channels[max_lines:])
+        )
+
         unknown_channels_str = "\n".join(
             [
                 f"`{channel_id}` - {msg_count} message(s)"
-                for channel_id, msg_count in unknown_channels
+                for channel_id, msg_count in unknown_channels[:max_lines]
             ]
+        )
+        unknown_channels_str = self._append_hidden_channels_str(
+            unknown_channels_str, len(unknown_channels[max_lines:])
         )
         embed.add_field(
             name="Salons enregistrés", value=known_channels_str, inline=False
@@ -304,17 +317,27 @@ class History(commands.Cog):
         ignored_channels_str = "Aucun salon ignoré."
         if tracked_guild.ignored_channels_ids:
             ignored_channels_strs = []
-            for ignored_channel_id in tracked_guild.ignored_channels_ids:
+            for ignored_channel_id in tracked_guild.ignored_channels_ids[:max_lines]:
                 ignored_channel = self.bot.get_channel(ignored_channel_id)
                 if isinstance(ignored_channel, discord.TextChannel):
                     ignored_channels_strs.append(ignored_channel.name)
                 else:
                     ignored_channels_strs.append(f"`{ignored_channel_id}`")
             ignored_channels_str = "\n".join(ignored_channels_strs)
+            ignored_channels_str = self._append_hidden_channels_str(
+                known_channels_str, len(tracked_guild.ignored_channels_ids[max_lines:])
+            )
 
         embed.add_field(name="Salons ignorés", value=ignored_channels_str, inline=False)
 
         await ctx.send(embed=embed)
+
+    def _append_hidden_channels_str(
+        self, channels_str: str, nb_hidden_channels: int
+    ) -> str:
+        if nb_hidden_channels:
+            channels_str += "\n" + f"*+ {nb_hidden_channels} autre(s) salon(s)*"
+        return channels_str
 
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
         """Récupérer la liste des channels connus en db"""
