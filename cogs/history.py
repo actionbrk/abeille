@@ -276,11 +276,11 @@ class History(commands.Cog):
             await ctx.send("Aucun channel connu, d'abord utiliser saveall ou save")
             return
 
-        embed_known_channels = discord.Embed(
-            title="Salons enregistrés",
-            description="Liste des salons accessibles et sur lesquels des messages sont enregistrés.",
+        embed = discord.Embed(
+            title="Salons",
+            description=f"Résumé des salons enregistrés sur le serveur **{guild.name}**.",
         )
-        embed_known_channels.set_author(name=guild.name, icon_url=guild.icon.url)
+        embed.set_author(name=guild.name, icon_url=guild.icon.url)
         known_channels_str = "\n".join(
             [
                 f"{channel.name} - {msg_count} message(s)"
@@ -293,25 +293,14 @@ class History(commands.Cog):
                 for channel_id, msg_count in unknown_channels
             ]
         )
-        embed_known_channels.add_field(
+        embed.add_field(
             name="Salons enregistrés", value=known_channels_str, inline=False
         )
-
-        embed_unknown_channels = discord.Embed(
-            title="Salons inconnus",
-            description="Liste des salons sur lesquels des messages sont enregistrés mais désormais inaccessibles.",
-        )
-        embed_unknown_channels.set_author(name=guild.name, icon_url=guild.icon.url)
-        embed_unknown_channels.add_field(
+        embed.add_field(
             name="Salons inconnus", value=unknown_channels_str, inline=False
         )
 
         # Ignored channels
-        embed_ignored_channels = discord.Embed(
-            title="Salons ignorés",
-            description="Liste des salons ignorés.",
-        )
-        embed_ignored_channels.set_author(name=guild.name, icon_url=guild.icon.url)
         ignored_channels_str = "Aucun salon ignoré."
         if tracked_guild.ignored_channels_ids:
             ignored_channels_strs = []
@@ -323,17 +312,9 @@ class History(commands.Cog):
                     ignored_channels_strs.append(f"`{ignored_channel_id}`")
             ignored_channels_str = "\n".join(ignored_channels_strs)
 
-        embed_ignored_channels.add_field(
-            name="Salons ignorés", value=ignored_channels_str, inline=False
-        )
+        embed.add_field(name="Salons ignorés", value=ignored_channels_str, inline=False)
 
-        await ctx.send(
-            embeds=[
-                embed_known_channels,
-                embed_unknown_channels,
-                embed_ignored_channels,
-            ]
-        )
+        await ctx.send(embed=embed)
 
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
         """Récupérer la liste des channels connus en db"""
