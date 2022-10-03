@@ -6,8 +6,8 @@ import os
 import discord
 from discord.ext import commands
 
-from cogs.tracking import get_tracked_guild, get_tracked_guilds
-from models.message import Message, MessageIndex
+from cogs.tracking import get_tracked_guilds
+from models.message import MessageIndex
 
 # Chargement paramètres DB
 salt = os.getenv("SALT").encode()  # type:ignore
@@ -51,83 +51,11 @@ class Admin(commands.Cog):
                 MessageIndex.rebuild()
                 logging.info("Rebuilt.")
 
-    @commands.command(name="recap", aliases=["récap"])
-    @commands.guild_only()
-    @commands.check(is_admin)
-    async def check(self, ctx: commands.Context):
-        """Vérifie quels channels sont enregistrés"""
-        assert ctx.guild is not None, "Impossible de récupérer la guild"
-        await self._check(ctx, ctx.guild.id)
-
-    @commands.command(name="recapid", aliases=["récapid"])
-    @commands.guild_only()
-    @commands.is_owner()
-    async def check_id(self, ctx: commands.Context, guild_id: int):
-        """Vérifie quels channels sont enregistrés (id)"""
-        await self._check(ctx, guild_id)
-
-    async def _check(self, ctx: commands.Context, guild_id: int):
-        """Vérifie quels channels sont enregistrés"""
-        db = get_tracked_guild(self.bot, guild_id).database
-        guild = self.bot.get_guild(guild_id)
-        if guild is None:
-            await ctx.reply(f"Guild inconnue ({guild_id})")
-            return
-
-        ok_channels = []
-        nok_channels = []
-        ignored = []
-
-        start_msg = await ctx.author.send("Je fais un récap... 🐝")
-
-        for channel in guild.channels:
-            if not isinstance(channel, discord.TextChannel):
-                continue
-
-            # Si channel ignoré
-            if channel.id in tracking_cog.ignored_channels:
-                ignored.append(f"🚫 {channel.name}")
-                continue
-
-            try:
-                [message async for message in channel.history(limit=10)]
-            except discord.Forbidden as _exc:
-                nok_channels.append(f"⭕ {channel.name}")
-                continue
-
-            # Compter nombre de messages enregistrés
-            with db:
-                with db.bind_ctx([Message]):
-                    count = (
-                        Message.select().where(Message.channel_id == channel.id).count()
-                    )
-
-            ok_channels.append(f"✅ {channel.name} ({count} messages enregistrés)")
-
-        await start_msg.delete()
-        await ctx.author.send(
-            f"🐝 J'enregistre actuellement **{len(ok_channels)}** salon(s) écrit(s).\n"
-            + "\n".join(ok_channels)
-        )
-        await ctx.author.send(
-            f"🐝 Je n'ai pas la permission d'enregistrer **{len(nok_channels)}** salon(s) écrit(s).\n"
-            + "\n".join(nok_channels)
-        )
-        await ctx.author.send(
-            f"🐝 J'ignore **{len(ignored)}** salon(s) écrit(s).\n" + "\n".join(ignored)
-        )
-
     async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, (commands.BadArgument, commands.MissingRequiredArgument)):
             await ctx.author.send("Vous avez mal utilisé la commande ! 🐝")
             return
         await ctx.author.send(f"Quelque chose s'est mal passée. 🐝 ({error})")
-
-    @check.error
-    @check_id.error
-    async def _admin_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.CheckFailure):
-            await ctx.author.send("Seuls les admins peuvent exécuter cette commande. 🐝")
 
 
 async def setup(bot):

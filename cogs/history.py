@@ -1,7 +1,7 @@
 import datetime
 import logging
 import time
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import discord
 from discord.abc import Snowflake
@@ -244,9 +244,12 @@ class History(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def channels(self, ctx: commands.Context, guild_id: int):
+    async def channels(self, ctx: commands.Context, guild_id: Optional[int]):
         """Known channels"""
         max_lines = 15
+
+        if guild_id is None:
+            guild_id = ctx.channel.guild.id
 
         tracked_guild = get_tracked_guild(self.bot, guild_id)
         db = tracked_guild.database
@@ -287,7 +290,10 @@ class History(commands.Cog):
             description=f"Résumé des salons enregistrés sur le serveur **{guild.name}**.",
         )
         embed.set_author(name=guild.name, icon_url=guild.icon.url)
-        known_channels_str = "\n".join(
+        known_channels_str = (
+            "> *Ces salons sont actuellement enregistrés par Abeille.*\n"
+        )
+        known_channels_str += "\n".join(
             [
                 f"{channel.name} - {msg_count} message(s)"
                 for channel, msg_count in known_channels[:max_lines]
@@ -297,7 +303,8 @@ class History(commands.Cog):
             known_channels_str, len(known_channels[max_lines:])
         )
 
-        unknown_channels_str = "\n".join(
+        unknown_channels_str = "> *Des messages ont été enregistrés sur ces salons, mais ces derniers ne sont plus accessibles par Abeille.*\n"
+        unknown_channels_str += "\n".join(
             [
                 f"`{channel_id}` - {msg_count} message(s)"
                 for channel_id, msg_count in unknown_channels[:max_lines]
