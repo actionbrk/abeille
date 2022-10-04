@@ -31,6 +31,7 @@ COGS_DIR = "cogs"
 DESCRIPTION = "Abeille"
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 
 class AbeilleBot(commands.Bot):

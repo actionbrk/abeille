@@ -6,7 +6,7 @@ import logging
 import os
 import textwrap
 from datetime import date, timedelta
-from typing import List
+from typing import Dict, List
 
 import discord
 import pandas
@@ -19,7 +19,7 @@ from discord.app_commands import Choice
 from discord.ext import commands
 from models.identity import Identity
 from models.message import Message, MessageDay, MessageIndex
-from peewee import RawQuery, Select, fn, DoesNotExist
+from peewee import RawQuery, Select, fn, DoesNotExist, Database
 
 from cogs.tracking import get_tracked_guild
 
@@ -334,9 +334,7 @@ class Activity(commands.Cog):
     )
     @app_commands.guild_only()
     async def rank_slash(self, interaction: discord.Interaction, expression: str):
-        max_lines = 3
         expression = expression.strip()
-
         # FTS5 : can't tokenize expressions with less than 3 characters
         if len(expression) < 3:
             await interaction.followup.send(
@@ -344,117 +342,14 @@ class Activity(commands.Cog):
             )
             return
 
-        # FTS5 : enclose in double quotes
-        expression_fts = f'"{expression}"'
-
-        author = interaction.user
-        author_id = hashlib.pbkdf2_hmac(
-            hash_name, str(author.id).encode(), salt, iterations
-        ).hex()
         guild_id = interaction.guild_id
         if not guild_id:
             await interaction.followup.send("Can't find guild id.")
             return
 
-        is_interaction_user_registered = False
-
         db = get_tracked_guild(self.bot, guild_id).database
 
-        with db:
-            with db.bind_ctx([Message, MessageIndex, Identity]):
-                rank_query = fn.rank().over(
-                    order_by=[fn.COUNT(Message.message_id).desc()]
-                )
-
-                subq = (
-                    Message.select(Message.author_id, rank_query.alias("rank"))
-                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
-                    .where(MessageIndex.match(expression_fts))
-                    .group_by(Message.author_id)
-                )
-
-                # Here we use a plain Select() to create our query.
-                query = (
-                    Select(columns=[subq.c.rank])
-                    .from_(subq)
-                    .where(subq.c.author_id == author_id)
-                    .bind(db)
-                )  # We must bind() it to the database.
-
-                rank = query.scalar()
-
-                query_messages = (
-                    Message.select()
-                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
-                    .where(MessageIndex.match(expression_fts))
-                    .group_by(Message.author_id)
-                    .order_by(fn.COUNT(Message.message_id).desc())
-                )
-                messages: List[Message] = list(query_messages)
-
-                if messages:
-                    result_list = [
-                        f"**{len(messages)}** membres ont déjà utilisé l'expression *{expression}*.\n"
-                    ]
-                    for idx, message in enumerate(messages[:max_lines], 1):
-                        # Try to get real user ID if registered
-                        user = None
-                        try:
-                            identity: Identity = Identity.get_by_id(message.author_id)
-                            # TODO: get_user ????
-                            user = await self.bot.fetch_user(identity.real_author_id)
-                        except DoesNotExist:
-                            pass
-
-                        # If user is executing the command OR it is registered
-                        if author_id == message.author_id:
-                            user_str = interaction.user.mention
-                        elif user is not None:
-                            user_str = user.mention
-                        else:
-                            user_str = "?????"
-
-                        if idx == 1:
-                            result_list.append(f"🥇 {user_str}")
-                        elif idx == 2:
-                            result_list.append(f"🥈 {user_str}")
-                        elif idx == 3:
-                            result_list.append(f"🥉 {user_str}")
-                        else:
-                            result_list.append(f"{idx}. {user_str}")
-
-                else:
-                    result_list = [
-                        "Cette expression n'a jamais été employée sur ce serveur."
-                    ]
-
-                # Check if interaction user is registered
-                try:
-                    identity = Identity.get_by_id(author_id)
-                    is_interaction_user_registered = True
-                except DoesNotExist:
-                    pass
-
-        if rank is None:
-            result = f"Vous n'avez jamais employé l'expression *{expression}*."
-        elif rank == 1:
-            result = f"🥇 Vous êtes le membre ayant le plus employé l'expression *{expression}*."
-        elif rank == 2:
-            result = f"🥈 Vous êtes le 2ème membre à avoir le plus employé l'expression *{expression}*."
-        elif rank == 3:
-            result = f"🥉 Vous êtes le 3ème membre à avoir le plus employé l'expression *{expression}*."
-        else:
-            result = f"Vous êtes le **{rank}ème** membre à avoir le plus employé l'expression *{expression}*."
-
-        result += "\n\n" + "\n".join(result_list)
-
-        await interaction.response.send_message(result)
-
-        if not is_interaction_user_registered:
-            await interaction.followup.send(
-                "Pour afficher systématiquement votre pseudo dans les classements, Abeille a besoin de stocker votre identifiant utilisateur. Utilisez la commande **/register** pour cela. Il sera toujours possible de supprimer cette donnée d'Abeille avec la commande **/unregister**. 🐝",
-                ephemeral=True,
-            )
+        await RankView(interaction, guild_id, db, expression, self.bot).start()
 
     @app_commands.command(
         name="register",
@@ -530,6 +425,170 @@ class Activity(commands.Cog):
             await ctx.send("Vous avez mal utilisé la commande ! 🐝")
         else:
             await ctx.send(f"Quelque chose s'est mal passée ({error}). 🐝")
+
+
+class RankView(discord.ui.View):
+    max_lines = 3
+
+    def __init__(
+        self,
+        initial_interaction: discord.Interaction,
+        guild_id: int,
+        db: Database,
+        expression: str,
+        bot: commands.Bot,
+    ):
+        super().__init__()
+        self.initial_interaction = initial_interaction
+        self.guild_id = guild_id
+        self.db = db
+        self.expression = expression
+        self.bot = bot
+
+        # FTS5 : enclose in double quotes
+        self.expression_fts = f'"{expression}"'
+
+        self.interaction_user_ranks: Dict[int, int] = dict()
+
+    async def interaction_check(self, interaction: discord.Interaction, /):
+        """Allow user to click button once"""
+        return interaction.user.id not in self.interaction_user_ranks
+
+    async def start(self):
+        # Send rank for initial interaction user
+        await self.initial_interaction.response.send_message(
+            self.get_rank_content(self.initial_interaction.user),
+            view=self,
+        )
+        await self.warn_if_not_registered(
+            self.initial_interaction, self.initial_interaction.user.id
+        )
+
+    async def warn_if_not_registered(
+        self, interaction: discord.Interaction, user_id: int
+    ):
+        """Sends an ephemeral message if user has not registered its user ID"""
+        with self.db:
+            with self.db.bind_ctx([Identity]):
+                try:
+                    Identity.get_by_id(user_id)
+                except DoesNotExist:
+                    await interaction.followup.send(
+                        "Pour afficher systématiquement votre pseudo dans les classements, Abeille a besoin de stocker votre identifiant utilisateur. Utilisez la commande **/register** pour cela. Il sera toujours possible de supprimer cette donnée d'Abeille avec la commande **/unregister**. 🐝",
+                        ephemeral=True,
+                    )
+
+    @discord.ui.button(label="Et moi ?", style=discord.ButtonStyle.primary)
+    async def rank_me(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        result = self.get_rank_content(interaction.user)
+        await interaction.response.edit_message(content=result)
+
+        await self.warn_if_not_registered(interaction, interaction.user.id)
+
+    def get_rank_content(self, interaction_user: discord.User):
+
+        author = interaction_user
+        author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(author.id).encode(), salt, iterations
+        ).hex()
+
+        with self.db:
+            with self.db.bind_ctx([Message, MessageIndex, Identity]):
+                rank_query = fn.rank().over(
+                    order_by=[fn.COUNT(Message.message_id).desc()]
+                )
+
+                subq = (
+                    Message.select(Message.author_id, rank_query.alias("rank"))
+                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
+                    .where(MessageIndex.match(self.expression_fts))
+                    .group_by(Message.author_id)
+                )
+
+                # Here we use a plain Select() to create our query.
+                query = (
+                    Select(columns=[subq.c.rank])
+                    .from_(subq)
+                    .where(subq.c.author_id == author_id)
+                    .bind(self.db)
+                )  # We must bind() it to the database.
+
+                rank = query.scalar()
+
+                # Add interaction user to interacted user dict
+                self.interaction_user_ranks[interaction_user.id] = rank
+
+                query_messages = (
+                    Message.select()
+                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
+                    .where(MessageIndex.match(self.expression_fts))
+                    .group_by(Message.author_id)
+                    .order_by(fn.COUNT(Message.message_id).desc())
+                )
+                messages: List[Message] = list(query_messages)
+
+                if messages:
+                    rankings_str_list = [
+                        f"**{len(messages)}** membres ont déjà utilisé l'expression *{self.expression}*.\n"
+                    ]
+                    for idx, message in enumerate(messages[: self.max_lines], 1):
+                        # Try to get real user ID if registered
+                        user = None
+                        try:
+                            identity: Identity = Identity.get_by_id(message.author_id)
+                            user = self.bot.get_user(identity.real_author_id)
+                        except DoesNotExist:
+                            pass
+
+                        # If user is registered
+                        if user is not None:
+                            user_str = user.mention
+                        # If user executed the command
+                        # elif idx in self.interaction_user_ranks.values():
+                        #     # TODO: It gets the user_id from the values of the dict....
+                        #     user_str = self.bot.get_user(
+                        #         list(self.interaction_user_ranks.keys())[
+                        #             list(self.interaction_user_ranks.values()).index(
+                        #                 idx
+                        #             )
+                        #         ]
+                        #     ).mention
+                        else:
+                            user_str = "*Utilisateur non enregistré*"
+
+                        if idx == 1:
+                            rankings_str_list.append(f"🥇 {user_str}")
+                        elif idx == 2:
+                            rankings_str_list.append(f"🥈 {user_str}")
+                        elif idx == 3:
+                            rankings_str_list.append(f"🥉 {user_str}")
+                        else:
+                            rankings_str_list.append(f"{idx}. {user_str}")
+
+                else:
+                    rankings_str_list = [
+                        "Cette expression n'a jamais été employée sur ce serveur."
+                    ]
+
+        user_ranks_str = ""
+        for user_id, user_rank in self.interaction_user_ranks.items():
+            user = self.bot.get_user(user_id)
+            if user_rank is None:
+                user_ranks_str += f"{user.mention} n'a jamais employé l'expression *{self.expression}*.\n"
+            elif user_rank == 1:
+                user_ranks_str += f"🥇 {user.mention} est le membre ayant le plus employé l'expression *{self.expression}*.\n"
+            elif user_rank == 2:
+                user_ranks_str += f"🥈 {user.mention} est le 2ème membre à avoir le plus employé l'expression *{self.expression}*.\n"
+            elif user_rank == 3:
+                user_ranks_str += f"🥉 {user.mention} est le 3ème membre à avoir le plus employé l'expression *{self.expression}*.\n"
+            else:
+                user_ranks_str += f"{user.mention} est le **{user_rank}ème** membre à avoir le plus employé l'expression *{self.expression}*.\n"
+
+        user_ranks_str += "\n\n" + "\n".join(rankings_str_list)
+
+        return user_ranks_str
 
 
 async def setup(bot):
