@@ -468,10 +468,13 @@ class RankView(discord.ui.View):
         self, interaction: discord.Interaction, user_id: int
     ):
         """Sends an ephemeral message if user has not registered its user ID"""
+        author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(user_id).encode(), salt, iterations
+        ).hex()
         with self.db:
             with self.db.bind_ctx([Identity]):
                 try:
-                    Identity.get_by_id(user_id)
+                    Identity.get_by_id(author_id)
                 except DoesNotExist:
                     await interaction.followup.send(
                         "Pour afficher systématiquement votre pseudo dans les classements, Abeille a besoin de stocker votre identifiant utilisateur. Utilisez la commande **/register** pour cela. Il sera toujours possible de supprimer cette donnée d'Abeille avec la commande **/unregister**. 🐝",
