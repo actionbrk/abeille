@@ -459,6 +459,7 @@ class RankView(discord.ui.View):
         await self.initial_interaction.response.send_message(
             self.get_rank_content(self.initial_interaction.user),
             view=self,
+            allowed_mentions=discord.AllowedMentions(users=False),
         )
         await self.warn_if_not_registered(
             self.initial_interaction, self.initial_interaction.user.id
@@ -486,7 +487,9 @@ class RankView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         result = self.get_rank_content(interaction.user)
-        await interaction.response.edit_message(content=result)
+        await interaction.response.edit_message(
+            content=result, allowed_mentions=discord.AllowedMentions(users=False)
+        )
 
         await self.warn_if_not_registered(interaction, interaction.user.id)
 
