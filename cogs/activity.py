@@ -595,7 +595,7 @@ class RankView(discord.ui.View):
             else:
                 user_ranks_str += f"{user.mention} est le **{user_rank}ème** membre à avoir le plus employé l'expression *{self.expression}*.\n"
 
-        user_ranks_str += "\n\n" + "\n".join(rankings_str_list)
+        user_ranks_str += "\n" + "\n".join(rankings_str_list)
 
         return user_ranks_str
 
