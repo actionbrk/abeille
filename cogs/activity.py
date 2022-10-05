@@ -349,7 +349,7 @@ class Activity(commands.Cog):
 
         db = get_tracked_guild(self.bot, guild_id).database
 
-        await RankView(interaction, guild_id, db, expression, self.bot).start()
+        await RankView(guild_id, db, expression, self.bot).start(interaction)
 
     @app_commands.command(
         name="register",
@@ -432,18 +432,17 @@ class RankView(discord.ui.View):
 
     def __init__(
         self,
-        initial_interaction: discord.Interaction,
         guild_id: int,
         db: Database,
         expression: str,
         bot: commands.Bot,
     ):
-        super().__init__()
-        self.initial_interaction = initial_interaction
+        super().__init__(timeout=900)
         self.guild_id = guild_id
         self.db = db
         self.expression = expression
         self.bot = bot
+        self.message: discord.InteractionMessage = None
 
         # FTS5 : enclose in double quotes
         self.expression_fts = f'"{expression}"'
@@ -454,16 +453,20 @@ class RankView(discord.ui.View):
         """Allow user to click button once"""
         return interaction.user.id not in self.interaction_user_ranks
 
-    async def start(self):
+    async def on_timeout(self) -> None:
+        self.rank_me.disabled = True
+        self.rank_me.label = "Expiré"
+        await self.message.edit(view=self)
+
+    async def start(self, interaction: discord.Interaction):
         # Send rank for initial interaction user
-        await self.initial_interaction.response.send_message(
-            self.get_rank_content(self.initial_interaction.user),
+        await interaction.response.send_message(
+            self.get_rank_content(interaction.user),
             view=self,
             allowed_mentions=discord.AllowedMentions(users=False),
         )
-        await self.warn_if_not_registered(
-            self.initial_interaction, self.initial_interaction.user.id
-        )
+        self.message = await interaction.original_response()
+        await self.warn_if_not_registered(interaction, interaction.user.id)
 
     async def warn_if_not_registered(
         self, interaction: discord.Interaction, user_id: int
