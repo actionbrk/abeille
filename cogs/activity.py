@@ -437,7 +437,8 @@ class RankView(discord.ui.View):
         expression: str,
         bot: commands.Bot,
     ):
-        super().__init__(timeout=900)
+        # Timeout has to be strictly lower than 15min=900s (since interaction is dead after this time)
+        super().__init__(timeout=720)
         self.guild_id = guild_id
         self.db = db
         self.expression = expression
