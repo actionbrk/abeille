@@ -1,4 +1,5 @@
-from datetime import datetime
+"""Ecowatt models"""
+
 from typing import List, TypedDict
 
 

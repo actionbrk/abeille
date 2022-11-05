@@ -1,3 +1,5 @@
+"""Abeille"""
+
 import asyncio
 import logging
 import os
@@ -7,8 +9,6 @@ import sys
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-
-from common.utils import DEV_GUILD
 
 logging.basicConfig(
     level=logging.INFO,

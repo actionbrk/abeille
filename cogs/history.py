@@ -1,15 +1,14 @@
-import datetime
 import logging
 import time
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import discord
 from discord.abc import Snowflake
 from discord.ext import commands
 from peewee import Database, DoesNotExist, fn
 
-from models.message import Message
 from cogs.tracking import get_message, get_tracked_guild
+from models.message import Message
 
 
 class SaveResult:
@@ -195,10 +194,10 @@ class History(commands.Cog):
         self,
         channel: discord.TextChannel,
         count: int = 100,
-        before: Union[Snowflake, datetime.datetime] = None,
-        after: Union[Snowflake, datetime.datetime] = None,
-        around: Union[Snowflake, datetime.datetime] = None,
-        oldest_first: bool = None,
+        before: Snowflake | None = None,
+        after: Snowflake | None = None,
+        around: Snowflake | None = None,
+        oldest_first: bool | None = None,
     ) -> SaveResult:
         """Enregistre les messages d'un channel dans la BDD associée"""
         guild = channel.guild

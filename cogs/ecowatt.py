@@ -5,8 +5,8 @@ from typing import Dict, List
 
 import discord
 import requests
+from discord import Color, app_commands
 from discord.ext import commands, tasks
-from discord import app_commands, Color
 
 from models.ecowatt import Signal
 
@@ -24,6 +24,8 @@ VALUE_MESSAGE: Dict[int, str] = {
     2: "Système électrique tendu. Les écogestes sont les bienvenus.",
     3: "Système électrique très tendu. Coupures inévitables si nous ne baissons pas notre consommation.",
 }
+
+TIMEOUT = 10.0
 
 
 class Ecowatt(commands.Cog):
@@ -48,16 +50,18 @@ class Ecowatt(commands.Cog):
     async def _update_ecowatt(self):
         logging.info("Updating Ecowatt...")
 
-        # TODO: API
         auth_response = requests.get(
             AUTH_URL,
             headers={"Authorization": f"Basic {os.getenv('ECOWATT_BASE64_TOKEN')}"},
+            timeout=TIMEOUT,
         )
 
         access_token = auth_response.json()["access_token"]
 
         request_response = requests.get(
-            ECOWATT_URL, headers={"Authorization": f"Bearer {access_token}"}
+            ECOWATT_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=TIMEOUT,
         )
         if request_response.status_code == 200:
             # Success
