@@ -61,7 +61,8 @@ class SnapmapView(discord.ui.View):
         return allowed
 
     async def on_timeout(self) -> None:
-        await self.message.delete()
+        self.clear_items()
+        await self.message.edit(view=self)
 
     async def start(self):
         """Send snap playlist to user"""
