@@ -15,6 +15,7 @@ GET_PLAYLIST_URL = "https://ms.sc-jpl.com/web/getPlaylist"
 GET_LATEST_TILE_SET_URL = "https://ms.sc-jpl.com/web/getLatestTileSet"
 GEOCODING_URL = "https://nominatim.openstreetmap.org/search"
 TIMEOUT = 10.0
+LOCATION_DISPLAY_LOCALE = "fr"
 
 
 class Snapmap(commands.Cog):
@@ -130,9 +131,23 @@ class SnapmapView(discord.ui.View):
     def get_content(self) -> str:
         """Get content to send"""
         current_snap = self.get_current_snap()
-        content = [
-            f"{current_snap['snapInfo']['title']['fallback']} <t:{current_snap['timestamp'][:-3]}:R>\n"
+
+        # Location
+        title = current_snap["snapInfo"]["title"]
+        title_strings = title["strings"]
+        title_strings_text = [
+            location_title["text"]
+            for location_title in filter(
+                lambda locale_text: locale_text["locale"] == LOCATION_DISPLAY_LOCALE,
+                title_strings,
+            )
         ]
+        if title_strings_text:
+            location_display_name = title_strings_text[0]
+        else:
+            location_display_name = title["fallback"]
+
+        content = [f"{location_display_name} <t:{current_snap['timestamp'][:-3]}:R>\n"]
 
         # TODO: content.append(current_snap["snapInfo"].get("overlayText"))
 
