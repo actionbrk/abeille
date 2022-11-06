@@ -96,10 +96,16 @@ class SnapmapView(discord.ui.View):
 
             self.snap_playlist = snap_response.json()["manifest"]["elements"]
 
-            await self.initial_interaction.response.send_message(
-                self.get_content(),
-                view=self,
-            )
+            if not self.snap_playlist:
+                # No snap found
+                await self.initial_interaction.response.send_message(
+                    f"Aucun snap trouvé à la localisation `{self.geocoded_location_name}` dans un rayon de `{self.radius} km`."
+                )
+            else:
+                await self.initial_interaction.response.send_message(
+                    self.get_content(),
+                    view=self,
+                )
         else:
             await self.initial_interaction.response.send_message(
                 f"Impossible de trouver la localisation *{self.location}*.",
@@ -140,9 +146,6 @@ class SnapmapView(discord.ui.View):
                 "publicImageMediaInfo"
             ]["mediaUrl"]
 
-        # content.append(
-        #     f"> Snaps pour la localisation `{self.geocoded_location_name}` sur un rayon de `{self.radius} km`\n"
-        # )
         content.append(media_url)
 
         return "".join(content)
