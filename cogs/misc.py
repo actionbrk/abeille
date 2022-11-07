@@ -40,7 +40,7 @@ class Misc(commands.Cog):
         embed.add_field(
             name=f"Informations du système exécutant {bot_name}",
             value=f"""
-                Système d'exploitation : {platform.platform()}
+                Système : {platform.platform(aliased=True)}
                 SQLite {sqlite3.sqlite_version}
                 discord.py {discord.__version__}
                 """,
@@ -54,9 +54,7 @@ class Misc(commands.Cog):
             text=f"{bot_name} est maintenu par {owner.name}#{owner.discriminator}",
             icon_url=owner.avatar.url,
         )
-        await interaction.response.send_message(
-            content="<@168378684497985536> <@339928611937189888>", embed=embed
-        )
+        await interaction.response.send_message(embed=embed)
 
     @commands.command()
     @commands.is_owner()
