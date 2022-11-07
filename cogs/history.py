@@ -30,68 +30,6 @@ class History(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def saveold(self, ctx: commands.Context, channel_id: int, count: int):
-        """Saves older messages in this channel"""
-        channel = self.bot.get_channel(channel_id)
-        if not isinstance(channel, discord.TextChannel):
-            await ctx.reply(f"Impossible de trouver ce salon ({channel_id})")
-            return
-
-        tracked_guild = get_tracked_guild(self.bot, channel.guild.id)
-        db = tracked_guild.database
-
-        # Si channel ignoré, passer
-        if channel.id in tracked_guild.ignored_channels_ids:
-            await ctx.send(f"Channel {channel.name} ignoré")
-            return
-
-        time_debut = time.time()
-        msg_bot = await ctx.send("Enregistrement...")
-
-        # Récupérer le plus ancien message du channel
-        with db:
-            with db.bind_ctx([Message]):
-                oldest = (
-                    Message.select()
-                    .where(Message.channel_id == channel_id)
-                    .order_by(Message.message_id)
-                    .get()
-                )
-
-        # discord.Message correspondant
-        oldest_msg: discord.Message = await channel.fetch_message(oldest)
-
-        # Enregistrement
-        save_result = await self._save_from_channel(channel, count, before=oldest_msg)
-
-        print("Fin", time.time() - time_debut)
-        await msg_bot.edit(content=f"{count} demandés\n{save_result}")
-
-    @commands.command()
-    @commands.is_owner()
-    async def save(self, ctx: commands.Context, channel_id: int, count: int = 20):
-        """Sauvegarde les messages dans le passé à partir d'ici"""
-        channel = self.bot.get_channel(channel_id)
-        if not isinstance(channel, discord.TextChannel):
-            await ctx.reply(f"Impossible de trouver ce salon ({channel_id})")
-            return
-
-        # Si channel ignoré, passer
-        tracked_guild = get_tracked_guild(self.bot, channel.guild.id)
-        if channel.id in tracked_guild.ignored_channels_ids:
-            await ctx.send(f"Channel {channel.name} ignoré")
-            return
-
-        time_debut = time.time()
-        print("Début")
-
-        save_result = await self._save_from_channel(channel, count)  # type: ignore
-
-        print("Fin", time.time() - time_debut)
-        await ctx.send(f"{count} demandés\n{save_result}")
-
-    @commands.command()
-    @commands.is_owner()
     async def saveall(self, ctx: commands.Context, guild_id: int, count: int = 20):
         """Sauvegarde les messages de tous les channels possibles à partir d'ici"""
         save_results = {}
