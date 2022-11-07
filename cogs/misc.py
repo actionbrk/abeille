@@ -35,7 +35,7 @@ class Misc(commands.Cog):
 
         embed = discord.Embed(
             title=f"{size_go} GB d'espace est utilisé pour *{interaction.guild.name}*",
-            description=f"Il s'agit des données enregistrées par Abeille lui permettant de fonctionner sur ce serveur.",
+            description=f"Il s'agit de l'espace utilisé par Abeille pour fonctionner correctement sur ce serveur.",
         )
         embed.add_field(
             name=f"Informations du système exécutant {bot_name}",
