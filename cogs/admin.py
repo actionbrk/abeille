@@ -4,9 +4,11 @@ import logging
 import os
 
 import discord
+import pandas
 from discord.ext import commands
+from peewee import RawQuery
 
-from cogs.tracking import get_tracked_guilds
+from cogs.tracking import get_tracked_guild
 from models.message import MessageIndex
 
 # Chargement paramètres DB
@@ -51,11 +53,18 @@ class Admin(commands.Cog):
                 MessageIndex.rebuild()
                 logging.info("Rebuilt.")
 
-    async def cog_command_error(self, ctx: commands.Context, error):
-        if isinstance(error, (commands.BadArgument, commands.MissingRequiredArgument)):
-            await ctx.author.send("Vous avez mal utilisé la commande ! 🐝")
-            return
-        await ctx.author.send(f"Quelque chose s'est mal passée. 🐝 ({error})")
+    @commands.command()
+    @commands.is_owner()
+    async def sql(self, ctx: commands.Context, guild_id: int, *, query: str):
+        """Execute raw sql query"""
+        db = get_tracked_guild(self.bot, guild_id).database
+        with db:
+            query_sql, _query_params = RawQuery(query).sql()
+            logging.info("Executing database request...")
+            df = pandas.read_sql_query(query_sql, db.connection())
+            logging.info("Database request answered.")
+
+        await ctx.send(str(df))
 
 
 async def setup(bot):
