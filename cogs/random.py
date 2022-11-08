@@ -102,36 +102,35 @@ async def get_random_message(
     length: Optional[int],
     member: Optional[discord.Member],
 ):
-    with db:
-        with db.bind_ctx([Message]):
-            params_list: List[Any] = [channel_id]
-            query_str = [
-                """
-                message_id > ((SELECT min(message_id) FROM message) + (
-                ABS(RANDOM()) % ((SELECT max(message_id) FROM message)-(SELECT min(message_id) FROM message))
-                ))
-                AND channel_id=?"""
-            ]
+    with db.bind_ctx([Message]):
+        params_list: List[Any] = [channel_id]
+        query_str = [
+            """
+            message_id > ((SELECT min(message_id) FROM message) + (
+            ABS(RANDOM()) % ((SELECT max(message_id) FROM message)-(SELECT min(message_id) FROM message))
+            ))
+            AND channel_id=?"""
+        ]
 
-            if media:
-                query_str.append("AND attachment_url is not null")
+        if media:
+            query_str.append("AND attachment_url is not null")
 
-            if length and length > 0:
-                query_str.append("AND length(content) > ?")
-                params_list.append(length)
+        if length and length > 0:
+            query_str.append("AND length(content) > ?")
+            params_list.append(length)
 
-            if member:
-                query_str.append("AND author_id=?")
-                author_id = hashlib.pbkdf2_hmac(
-                    hash_name, str(member.id).encode(), salt, iterations
-                ).hex()
-                params_list.append(author_id)
+        if member:
+            query_str.append("AND author_id=?")
+            author_id = hashlib.pbkdf2_hmac(
+                hash_name, str(member.id).encode(), salt, iterations
+            ).hex()
+            params_list.append(author_id)
 
-            sql: SQL = SQL(
-                " ".join(query_str),
-                params_list,
-            )
-            return Message.select().where(sql).get_or_none()
+        sql: SQL = SQL(
+            " ".join(query_str),
+            params_list,
+        )
+        return Message.select().where(sql).get_or_none()
 
 
 async def setup(bot):

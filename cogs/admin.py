@@ -36,11 +36,10 @@ class Admin(commands.Cog):
         """Optimize MessageIndex of every databases"""
         for guild_id, tracked_guild in get_tracked_guilds(self.bot).items():
             db = tracked_guild.database
-            with db:
-                with db.bind_ctx([MessageIndex]):
-                    logging.info("Optimizing %s...", str(guild_id))
-                    MessageIndex.optimize()
-                    logging.info("Optimized.")
+            with db.bind_ctx([MessageIndex]):
+                logging.info("Optimizing %s...", str(guild_id))
+                MessageIndex.optimize()
+                logging.info("Optimized.")
 
     @commands.command()
     @commands.is_owner()

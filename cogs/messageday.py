@@ -31,28 +31,27 @@ class MessageDay(commands.Cog):
 
         for guild_id, tracked_guild in get_tracked_guilds(self.bot).items():
             db = tracked_guild.database
-            with db:
-                with db.bind_ctx([message.MessageDay]):
-                    logging.info("Updating MessageDay for guild %s...", str(guild_id))
+            with db.bind_ctx([message.MessageDay]):
+                logging.info("Updating MessageDay for guild %s...", str(guild_id))
 
-                    # Clean table
-                    delete_query = message.MessageDay.delete()
-                    delete_query.execute(db)
+                # Clean table
+                delete_query = message.MessageDay.delete()
+                delete_query.execute(db)
 
-                    # Update table
-                    query = RawQuery(
-                        """
-                    INSERT INTO messageday
-                    SELECT DATE(message.timestamp), COUNT(message.message_id)
-                    FROM message
-                    WHERE DATE(message.timestamp) < ?
-                    GROUP BY DATE(message.timestamp)
-                    ORDER BY DATE(message.timestamp);""",
-                        params=([until_day]),
-                    )
-                    query.execute(db)
+                # Update table
+                query = RawQuery(
+                    """
+                INSERT INTO messageday
+                SELECT DATE(message.timestamp), COUNT(message.message_id)
+                FROM message
+                WHERE DATE(message.timestamp) < ?
+                GROUP BY DATE(message.timestamp)
+                ORDER BY DATE(message.timestamp);""",
+                    params=([until_day]),
+                )
+                query.execute(db)
 
-                    logging.info("Updated.")
+                logging.info("Updated.")
 
 
 async def setup(bot):

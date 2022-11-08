@@ -80,39 +80,36 @@ class Activity(commands.Cog):
         db = get_tracked_guild(self.bot, guild_id).database
         guild_name = self.bot.get_guild(guild_id)
 
-        with db:
-            with db.bind_ctx([Message, MessageIndex, MessageDay]):
+        with db.bind_ctx([Message, MessageIndex, MessageDay]):
 
-                if periode.value == 9999:
-                    oldest_date: MessageDay = (
-                        MessageDay.select().order_by(MessageDay.date.asc()).get()
-                    )
-                    jour_debut = oldest_date.date
-
-                jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
-
-                # Messages de l'utilisateur dans la période
-                query = RawQuery(
-                    """
-                    SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
-                    FROM messageindex
-                    JOIN message ON messageindex.rowid = message.message_id
-                    JOIN messageday ON DATE(message.timestamp)=messageday.date
-                    WHERE messageindex MATCH ?
-                    AND DATE(message.timestamp) >= ?
-                    AND DATE(message.timestamp) <= ?
-                    GROUP BY DATE(message.timestamp)
-                    ORDER BY DATE(message.timestamp);""",
-                    params=([terme_fts, jour_debut, jour_fin]),
+            if periode.value == 9999:
+                oldest_date: MessageDay = (
+                    MessageDay.select().order_by(MessageDay.date.asc()).get()
                 )
+                jour_debut = oldest_date.date
 
-                # Exécution requête SQL
-                logging.info("Executing database request...")
-                query_sql, query_params = query.sql()
-                df = pandas.read_sql_query(
-                    query_sql, db.connection(), params=query_params
-                )
-                logging.info("Database request answered.")
+            jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
+
+            # Messages de l'utilisateur dans la période
+            query = RawQuery(
+                """
+                SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
+                FROM messageindex
+                JOIN message ON messageindex.rowid = message.message_id
+                JOIN messageday ON DATE(message.timestamp)=messageday.date
+                WHERE messageindex MATCH ?
+                AND DATE(message.timestamp) >= ?
+                AND DATE(message.timestamp) <= ?
+                GROUP BY DATE(message.timestamp)
+                ORDER BY DATE(message.timestamp);""",
+                params=([terme_fts, jour_debut, jour_fin]),
+            )
+
+            # Exécution requête SQL
+            logging.info("Executing database request...")
+            query_sql, query_params = query.sql()
+            df = pandas.read_sql_query(query_sql, db.connection(), params=query_params)
+            logging.info("Database request answered.")
 
         logging.info("Processing data and creating graph...")
 
@@ -205,62 +202,57 @@ class Activity(commands.Cog):
         db = get_tracked_guild(self.bot, guild_id).database
         guild_name = self.bot.get_guild(guild_id)
 
-        with db:
-            with db.bind_ctx([Message, MessageIndex, MessageDay]):
+        with db.bind_ctx([Message, MessageIndex, MessageDay]):
 
-                if periode.value == 9999:
-                    oldest_date: MessageDay = (
-                        MessageDay.select().order_by(MessageDay.date.asc()).get()
-                    )
-                    jour_debut = oldest_date.date
-
-                jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
-
-                # Messages de l'utilisateur dans la période
-                query1_str = """
-                    SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as expression1
-                    FROM messageindex
-                    JOIN message ON messageindex.rowid = message.message_id
-                    JOIN messageday ON DATE(message.timestamp)=messageday.date
-                    WHERE messageindex MATCH ?
-                    AND DATE(message.timestamp) >= ?
-                    AND DATE(message.timestamp) <= ?
-                    GROUP BY DATE(message.timestamp)
-                    ORDER BY DATE(message.timestamp);"""
-                query1 = RawQuery(
-                    query1_str,
-                    params=([expression1_fts, jour_debut, jour_fin]),
+            if periode.value == 9999:
+                oldest_date: MessageDay = (
+                    MessageDay.select().order_by(MessageDay.date.asc()).get()
                 )
-                query2_str = """
-                    SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as expression2
-                    FROM messageindex
-                    JOIN message ON messageindex.rowid = message.message_id
-                    JOIN messageday ON DATE(message.timestamp)=messageday.date
-                    WHERE messageindex MATCH ?
-                    AND DATE(message.timestamp) >= ?
-                    AND DATE(message.timestamp) <= ?
-                    GROUP BY DATE(message.timestamp)
-                    ORDER BY DATE(message.timestamp);"""
-                query2 = RawQuery(
-                    query2_str,
-                    params=([expression2_fts, jour_debut, jour_fin]),
-                )
+                jour_debut = oldest_date.date
 
-                # Query 1
-                logging.info("Executing database request...")
-                query_sql, query_params = query1.sql()
-                df1 = pandas.read_sql_query(
-                    query_sql, db.connection(), params=query_params
-                )
-                logging.info("Database request answered.")
+            jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
 
-                # Query 2
-                logging.info("Executing database request...")
-                query_sql, query_params = query2.sql()
-                df2 = pandas.read_sql_query(
-                    query_sql, db.connection(), params=query_params
-                )
-                logging.info("Database request answered.")
+            # Messages de l'utilisateur dans la période
+            query1_str = """
+                SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as expression1
+                FROM messageindex
+                JOIN message ON messageindex.rowid = message.message_id
+                JOIN messageday ON DATE(message.timestamp)=messageday.date
+                WHERE messageindex MATCH ?
+                AND DATE(message.timestamp) >= ?
+                AND DATE(message.timestamp) <= ?
+                GROUP BY DATE(message.timestamp)
+                ORDER BY DATE(message.timestamp);"""
+            query1 = RawQuery(
+                query1_str,
+                params=([expression1_fts, jour_debut, jour_fin]),
+            )
+            query2_str = """
+                SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as expression2
+                FROM messageindex
+                JOIN message ON messageindex.rowid = message.message_id
+                JOIN messageday ON DATE(message.timestamp)=messageday.date
+                WHERE messageindex MATCH ?
+                AND DATE(message.timestamp) >= ?
+                AND DATE(message.timestamp) <= ?
+                GROUP BY DATE(message.timestamp)
+                ORDER BY DATE(message.timestamp);"""
+            query2 = RawQuery(
+                query2_str,
+                params=([expression2_fts, jour_debut, jour_fin]),
+            )
+
+            # Query 1
+            logging.info("Executing database request...")
+            query_sql, query_params = query1.sql()
+            df1 = pandas.read_sql_query(query_sql, db.connection(), params=query_params)
+            logging.info("Database request answered.")
+
+            # Query 2
+            logging.info("Executing database request...")
+            query_sql, query_params = query2.sql()
+            df2 = pandas.read_sql_query(query_sql, db.connection(), params=query_params)
+            logging.info("Database request answered.")
 
         # Si emote custom : simplifier le nom pour titre DW
         custom_emoji_str = emoji_to_str(expression1)
@@ -364,23 +356,22 @@ class Activity(commands.Cog):
             hash_name, str(interaction.user.id).encode(), salt, iterations
         ).hex()
 
-        with db:
-            with db.bind_ctx([Identity]):
-                try:
-                    Identity.get_by_id(author_id)
-                    await interaction.response.send_message(
-                        "Vous avez déjà autorisé Abeille à stocker votre identifiant utilisateur. 🐝",
-                        ephemeral=True,
-                    )
-                except DoesNotExist:
-                    identity = Identity(
-                        author_id=author_id, real_author_id=interaction.user.id
-                    )
-                    identity.save(force_insert=True)
-                    await interaction.response.send_message(
-                        "Abeille stocke votre identifiant utilisateur. Utilisez /unregister pour le supprimer. 🐝",
-                        ephemeral=True,
-                    )
+        with db.bind_ctx([Identity]):
+            try:
+                Identity.get_by_id(author_id)
+                await interaction.response.send_message(
+                    "Vous avez déjà autorisé Abeille à stocker votre identifiant utilisateur. 🐝",
+                    ephemeral=True,
+                )
+            except DoesNotExist:
+                identity = Identity(
+                    author_id=author_id, real_author_id=interaction.user.id
+                )
+                identity.save(force_insert=True)
+                await interaction.response.send_message(
+                    "Abeille stocke votre identifiant utilisateur. Utilisez /unregister pour le supprimer. 🐝",
+                    ephemeral=True,
+                )
 
     @app_commands.command(
         name="unregister",
@@ -395,24 +386,23 @@ class Activity(commands.Cog):
             hash_name, str(interaction.user.id).encode(), salt, iterations
         ).hex()
 
-        with db:
-            with db.bind_ctx([Identity]):
-                try:
-                    identity = Identity.get_by_id(author_id)
-                    identity.delete_instance()
-                    await interaction.response.send_message(
-                        "Votre identifiant utilisateur est désormais inconnu d'Abeille. Utilisez /register pour réautoriser. 🐝",
-                        ephemeral=True,
-                    )
-                except DoesNotExist:
-                    identity = Identity(
-                        author_id=author_id, real_author_id=interaction.user.id
-                    )
-                    identity.save()
-                    await interaction.response.send_message(
-                        "Tout va bien : Abeille ne stocke pas votre identifiant utilisateur. 🐝",
-                        ephemeral=True,
-                    )
+        with db.bind_ctx([Identity]):
+            try:
+                identity = Identity.get_by_id(author_id)
+                identity.delete_instance()
+                await interaction.response.send_message(
+                    "Votre identifiant utilisateur est désormais inconnu d'Abeille. Utilisez /register pour réautoriser. 🐝",
+                    ephemeral=True,
+                )
+            except DoesNotExist:
+                identity = Identity(
+                    author_id=author_id, real_author_id=interaction.user.id
+                )
+                identity.save()
+                await interaction.response.send_message(
+                    "Tout va bien : Abeille ne stocke pas votre identifiant utilisateur. 🐝",
+                    ephemeral=True,
+                )
 
     async def cog_command_error(self, ctx: commands.Context, error):
         if isinstance(error, Maintenance):

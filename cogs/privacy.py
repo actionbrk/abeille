@@ -52,27 +52,25 @@ class Privacy(commands.Cog):
         # TODO: édition des anciens messages si nécessaire
         # Récupérer les messages de l'utilisateur enregistrés pour cette guild
         # TODO: mettre la connexion à la db dans le for
-        with db:
-            with db.bind_ctx([Message]):
-                for message in Message.select().where(Message.author_id == author_id):
-                    trouves += 1
+        with db.bind_ctx([Message]):
+            for message in Message.select().where(Message.author_id == author_id):
+                trouves += 1
 
-                    # discord.Message correspondant
-                    try:
-                        # TODO: faire channel.fetch_message (sur le channel correspondant)
-                        await author.fetch_message(message)
-                    except discord.NotFound:
-                        to_delete.append(message.message_id)
-                        supprimes += 1
-                    except discord.Forbidden:
-                        to_delete.append(message.message_id)
-                        supprimes += 1
+                # discord.Message correspondant
+                try:
+                    # TODO: faire channel.fetch_message (sur le channel correspondant)
+                    await author.fetch_message(message)
+                except discord.NotFound:
+                    to_delete.append(message.message_id)
+                    supprimes += 1
+                except discord.Forbidden:
+                    to_delete.append(message.message_id)
+                    supprimes += 1
 
         # Suppression
-        with db:
-            with db.bind_ctx([Message]):
-                for message_id in to_delete:
-                    Message.delete_by_id(message_id)
+        with db.bind_ctx([Message]):
+            for message_id in to_delete:
+                Message.delete_by_id(message_id)
 
         result = (
             f"Sur les **{trouves}** messages de vous que j'avais récoltés",
@@ -100,18 +98,17 @@ class Privacy(commands.Cog):
         temp_csv_path = f"/tmp/export_{author_id[:5]}.csv"
         temp_zip_path = f"/tmp/export_{author_id[:5]}.zip"
 
-        with db:
-            with db.bind_ctx([Message]):
-                with open(temp_csv_path, "w") as fh:
-                    writer = csv.writer(fh)
+        with db.bind_ctx([Message]):
+            with open(temp_csv_path, "w") as fh:
+                writer = csv.writer(fh)
 
-                    for message in (
-                        Message.select()
-                        .where(Message.author_id == author_id)
-                        .tuples()
-                        .iterator()
-                    ):
-                        writer.writerow(message)
+                for message in (
+                    Message.select()
+                    .where(Message.author_id == author_id)
+                    .tuples()
+                    .iterator()
+                ):
+                    writer.writerow(message)
 
         # Zip with max compression level
         logging.info("Zipping file...")
@@ -160,25 +157,23 @@ class Privacy(commands.Cog):
         db = get_tracked_guild(self.bot, guild.id).database
 
         # TODO: Parcourir chaque db
-        with db:
-            with db.bind_ctx([Message]):
-                try:
-                    message = (
-                        Message.select()
-                        .where(Message.author_id == author_id)
-                        .where(Message.message_id == message_id)
-                        .get()
-                    )
-                except DoesNotExist:
-                    await ctx.author.send("Je n'ai pas ce message dans ma ruche 🐝")
-                    return
+        with db.bind_ctx([Message]):
+            try:
+                message = (
+                    Message.select()
+                    .where(Message.author_id == author_id)
+                    .where(Message.message_id == message_id)
+                    .get()
+                )
+            except DoesNotExist:
+                await ctx.author.send("Je n'ai pas ce message dans ma ruche 🐝")
+                return
 
         # Récupérer channel du message
         channel = self.bot.get_channel(message.channel_id)
         if not isinstance(channel, discord.TextChannel):
-            with db:
-                with db.bind_ctx([Message]):
-                    Message.delete_by_id(message_id)
+            with db.bind_ctx([Message]):
+                Message.delete_by_id(message_id)
             await ctx.author.send(
                 "Je n'ai plus accès au channel correspondant, message supprimé 🐝"
             )
@@ -192,9 +187,8 @@ class Privacy(commands.Cog):
         except (discord.NotFound, discord.Forbidden):
             pass
 
-        with db:
-            with db.bind_ctx([Message]):
-                Message.delete_by_id(message_id)
+        with db.bind_ctx([Message]):
+            Message.delete_by_id(message_id)
 
         await ctx.author.send("Je viens de supprimer ce message de ma ruche 🐝")
 

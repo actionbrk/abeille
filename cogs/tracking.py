@@ -174,9 +174,8 @@ class Tracking(commands.Cog):
 
         msg = get_message(message)
 
-        with db:
-            with db.bind_ctx([Message]):
-                msg.save(force_insert=True)
+        with db.bind_ctx([Message]):
+            msg.save(force_insert=True)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
@@ -204,9 +203,8 @@ class Tracking(commands.Cog):
         db = tracked_guild.database
 
         # Supprimer
-        with db:
-            with db.bind_ctx([Message]):
-                Message.delete_by_id(message.id)
+        with db.bind_ctx([Message]):
+            Message.delete_by_id(message.id)
 
     @commands.Cog.listener()
     async def on_message_edit(self, _before: discord.Message, after: discord.Message):
@@ -236,13 +234,12 @@ class Tracking(commands.Cog):
 
         msg = get_message(after)
 
-        with db:
-            with db.bind_ctx([Message]):
-                try:
-                    Message.get_by_id(after.id)
-                    msg.save()
-                except DoesNotExist:
-                    msg.save(force_insert=True)
+        with db.bind_ctx([Message]):
+            try:
+                Message.get_by_id(after.id)
+                msg.save()
+            except DoesNotExist:
+                msg.save(force_insert=True)
 
 
 async def setup(bot):

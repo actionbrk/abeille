@@ -92,18 +92,17 @@ class History(commands.Cog):
         for channel in known_channels:
             msg_bot = await ctx.send(f"J'enregistre le channel **{channel.name}**...")
             # Récupérer le plus ancien message du channel
-            with db:
-                with db.bind_ctx([Message]):
-                    try:
-                        oldest = (
-                            Message.select()
-                            .where(Message.channel_id == channel.id)
-                            .order_by(Message.message_id)
-                            .get()
-                        )
-                    except DoesNotExist:
-                        print(f"Pas de message en db pour le channel {channel}")
-                        continue
+            with db.bind_ctx([Message]):
+                try:
+                    oldest = (
+                        Message.select()
+                        .where(Message.channel_id == channel.id)
+                        .order_by(Message.message_id)
+                        .get()
+                    )
+                except DoesNotExist:
+                    print(f"Pas de message en db pour le channel {channel}")
+                    continue
 
             # discord.Message correspondant
             try:
@@ -202,22 +201,21 @@ class History(commands.Cog):
         # Saved channels but cannot be retrieved
         unknown_channels: List[Tuple[int, int]] = []
 
-        with db:
-            with db.bind_ctx([Message]):
-                for channel_count in (
-                    Message.select(
-                        Message.channel_id, fn.COUNT(Message.channel_id).alias("count")
+        with db.bind_ctx([Message]):
+            for channel_count in (
+                Message.select(
+                    Message.channel_id, fn.COUNT(Message.channel_id).alias("count")
+                )
+                .group_by(Message.channel_id)
+                .order_by(fn.COUNT(Message.channel_id).desc())
+            ):
+                known_channel = self.bot.get_channel(channel_count.channel_id)
+                if isinstance(known_channel, discord.TextChannel):
+                    known_channels.append((known_channel, channel_count.count))
+                else:
+                    unknown_channels.append(
+                        (channel_count.channel_id, channel_count.count)
                     )
-                    .group_by(Message.channel_id)
-                    .order_by(fn.COUNT(Message.channel_id).desc())
-                ):
-                    known_channel = self.bot.get_channel(channel_count.channel_id)
-                    if isinstance(known_channel, discord.TextChannel):
-                        known_channels.append((known_channel, channel_count.count))
-                    else:
-                        unknown_channels.append(
-                            (channel_count.channel_id, channel_count.count)
-                        )
         if not known_channels:
             await ctx.send("Aucun channel connu, d'abord utiliser saveall ou save")
             return
@@ -287,16 +285,15 @@ class History(commands.Cog):
     async def _get_known_channels(self, db: Database) -> List[discord.TextChannel]:
         """Récupérer la liste des channels connus en db"""
         known_channels = []
-        with db:
-            with db.bind_ctx([Message]):
-                for known_channel_id in Message.select(Message.channel_id).distinct():
-                    known_channel = self.bot.get_channel(known_channel_id.channel_id)
-                    if not isinstance(known_channel, discord.TextChannel):
-                        print(
-                            f"Impossible de déterminer le channel correspondant à l'id {known_channel_id}"
-                        )
-                        continue
-                    known_channels.append(known_channel)
+        with db.bind_ctx([Message]):
+            for known_channel_id in Message.select(Message.channel_id).distinct():
+                known_channel = self.bot.get_channel(known_channel_id.channel_id)
+                if not isinstance(known_channel, discord.TextChannel):
+                    print(
+                        f"Impossible de déterminer le channel correspondant à l'id {known_channel_id}"
+                    )
+                    continue
+                known_channels.append(known_channel)
 
         return known_channels
 
