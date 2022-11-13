@@ -1,0 +1,10 @@
+black==22.10.0
+discord.py==2.1.0
+kaleido==0.2.1
+mypy==0.990
+pandas==1.5.1
+peewee==3.15.14
+plotly==5.11.0
+pylint==2.15.5
+python-dotenv==0.21.0
+requests==2.28.1
