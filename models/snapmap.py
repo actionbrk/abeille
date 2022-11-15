@@ -35,7 +35,7 @@ class _SnapStreamingMediaInfo(TypedDict):
     overlayUrl: Optional[str]
     previewUrl: Optional[str]
     previewWithOverlayUrl: Optional[str]
-    mediaUrl: Optional[str]
+    mediaUrl: str
 
 
 class _SnapPublicImageMediaInfo(TypedDict):
