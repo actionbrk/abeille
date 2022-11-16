@@ -151,9 +151,16 @@ class SnapmapView(discord.ui.View):
 
         # TODO: content.append(current_snap["snapInfo"].get("overlayText"))
 
-        # Get and clean URL
-        media_url = current_snap["snapInfo"]["streamingMediaInfo"]["mediaUrl"]
-        media_url = media_url.split("?")[0]
+        if current_snap["snapInfo"]["streamingMediaInfo"].get("mediaUrl"):
+            media_url = (
+                current_snap["snapInfo"]["streamingMediaInfo"]["prefixUrl"]
+                + current_snap["snapInfo"]["streamingMediaInfo"]["mediaUrl"]
+            )
+        else:
+            media_url = current_snap["snapInfo"]["publicMediaInfo"][
+                "publicImageMediaInfo"
+            ]["mediaUrl"]
+
         content.append(media_url)
 
         return "".join(content)
