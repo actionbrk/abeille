@@ -1,25 +1,15 @@
 import logging
-import time
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 import discord
 from discord.abc import Snowflake
 from discord.ext import commands
-from peewee import Database, DoesNotExist, fn
+from peewee import Database, DoesNotExist, fn, DateTimeField
 
-from cogs.tracking import get_message, get_tracked_guild
+from cogs.tracking import get_message, get_tracked_guild, get_tracked_guilds
 from models.message import Message
-
-
-class SaveResult:
-    def __init__(self):
-        self.trouves = 0
-        self.sauves = 0
-        self.deja_sauves = 0
-        self.from_bot = 0
-
-    def __str__(self) -> str:
-        return f"{self.sauves} enregistrés sur {self.trouves} trouvés ({self.from_bot} provenant de bots, {self.deja_sauves} déjà enregistrés)"
+from models.saveresult import SaveResult
 
 
 class History(commands.Cog):
@@ -27,6 +17,96 @@ class History(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    @commands.command()
+    @commands.is_owner()
+    async def save(self, ctx: commands.Context):
+        """Complete save of all guilds"""
+        logging.info("'save' command running...")
+
+        tracked_guilds = get_tracked_guilds(self.bot).values()
+
+        for tracked_guild_idx, tracked_guild in enumerate(tracked_guilds, 1):
+            logging.info(
+                "Saving guild [%d]... (%d/%d)",
+                tracked_guild.guild_id,
+                tracked_guild_idx,
+                len(tracked_guilds),
+            )
+
+            db = tracked_guild.database
+
+            guild = self.bot.get_guild(tracked_guild.guild_id)
+            if guild is None:
+                logging.warn("Guild [%d] is not accessible.")
+                continue
+
+            # Get available channels
+            for channel in guild.text_channels:
+
+                # Do not save a blacklisted channel
+                if channel.id in tracked_guild.ignored_channels_ids:
+                    logging.info(
+                        "Channel [%d] is blacklisted and will not be saved.", channel.id
+                    )
+                    continue
+
+                # Check if already saved messages in DB
+                with db.bind_ctx([Message]):
+                    is_unsaved_channel = (
+                        Message.get_or_none(Message.channel_id == channel.id) is None
+                    )
+
+                if is_unsaved_channel:
+                    logging.info(
+                        "No saved message were found for channel '%s' [%d]. Saving all messages...",
+                        channel.name,
+                        channel.id,
+                    )
+                    try:
+                        save_result = await self._save_from_channel(channel, count=None)
+                        logging.info(save_result)
+                    except:
+                        logging.warning(
+                            "Cannot save channel '%s' [%d]", channel.name, channel.id
+                        )
+                else:
+                    logging.info(
+                        "Saved messages were found for channel '%s' [%d]. Saving older and newer messages...",
+                        channel.name,
+                        channel.id,
+                    )
+                    # try:
+                    # TODO: Save older and newer messages
+                    # except:
+                    #     logging.warn(
+                    #         "Cannot save channel '%s' [%d]", channel.name, channel.id
+                    # )
+
+                # try:
+                # TODO: save_result = await self._save_from_channel(channel)
+                # TODO: logging.info(save_result)
+                # except:
+                # logging.warn("Cannot save channel [%d]",channel.id)
+
+            # if tracked_guild.last_saved_msg is not None:
+            #     timestamp: datetime = datetime.fromisoformat(
+            #         tracked_guild.last_saved_msg.timestamp
+            #     )
+            #     logging.info(
+            #         "Saving new messages from guild '%d' since %s...",
+            #         tracked_guild.guild_id,
+            #         timestamp,
+            #     )
+            #     known_channels = await self._get_known_channels(tracked_guild.database)
+            #     for channel in known_channels:
+            #         save_result = await self._save_from_channel(
+            #             channel, after=timestamp
+            #         )
+            #         logging.info(save_result)
+
+        logging.info("'save' command done.")
+        await ctx.send("`Done`")
 
     @commands.command()
     @commands.is_owner()
@@ -130,10 +210,10 @@ class History(commands.Cog):
     async def _save_from_channel(
         self,
         channel: discord.TextChannel,
-        count: int = 100,
-        before: Snowflake | None = None,
-        after: Snowflake | None = None,
-        around: Snowflake | None = None,
+        count: int | None = 100,
+        before: Snowflake | datetime | None = None,
+        after: Snowflake | datetime | None = None,
+        around: Snowflake | datetime | None = None,
         oldest_first: bool | None = None,
     ) -> SaveResult:
         """Enregistre les messages d'un channel dans la BDD associée"""
@@ -142,7 +222,7 @@ class History(commands.Cog):
 
         save_result = SaveResult()
 
-        with db:
+        with db.bind_ctx([Message]):
             async for message in channel.history(
                 limit=count,
                 before=before,
@@ -162,19 +242,17 @@ class History(commands.Cog):
                     continue
 
                 # Vérifier si le message existe avant d'enregistrer
-                # TODO: Plutôt faire select().count() ?
-                with db.bind_ctx([Message]):
-                    try:
-                        Message.get_by_id(message.id)
-                        save_result.deja_sauves += 1
-                        continue
-                    except DoesNotExist:
-                        pass
+                try:
+                    Message.get_by_id(message.id)
+                    save_result.deja_sauves += 1
+                    continue
+                except DoesNotExist:
+                    pass
 
-                    # Créer le message inexistant
-                    msg = get_message(message)
-                    msg.save(force_insert=True)
-                    save_result.sauves += 1
+                # Créer le message inexistant
+                msg = get_message(message)
+                msg.save(force_insert=True)
+                save_result.sauves += 1
 
         return save_result
 
