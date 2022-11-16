@@ -38,7 +38,7 @@ class History(commands.Cog):
 
             guild = self.bot.get_guild(tracked_guild.guild_id)
             if guild is None:
-                logging.warn("Guild [%d] is not accessible.")
+                logging.warning("Guild [%d] is not accessible.")
                 continue
 
             # Get available channels
@@ -53,11 +53,11 @@ class History(commands.Cog):
 
                 # Check if already saved messages in DB
                 with db.bind_ctx([Message]):
-                    is_unsaved_channel = (
+                    is_unknown_channel = (
                         Message.get_or_none(Message.channel_id == channel.id) is None
                     )
 
-                if is_unsaved_channel:
+                if is_unknown_channel:
                     logging.info(
                         "No saved message were found for channel '%s' [%d]. Saving all messages...",
                         channel.name,
@@ -66,7 +66,7 @@ class History(commands.Cog):
                     try:
                         save_result = await self._save_from_channel(channel, count=None)
                         logging.info(save_result)
-                    except:
+                    except Exception:
                         logging.warning(
                             "Cannot save channel '%s' [%d]", channel.name, channel.id
                         )
