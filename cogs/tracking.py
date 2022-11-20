@@ -173,6 +173,8 @@ class Tracking(commands.Cog):
         with db.bind_ctx([Message]):
             msg.save(force_insert=True)
 
+        logging.debug("Saved message %d.", message.id)
+
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
         """Message deleted"""
@@ -201,6 +203,8 @@ class Tracking(commands.Cog):
         # Supprimer
         with db.bind_ctx([Message]):
             Message.delete_by_id(message.id)
+
+        logging.debug("Deleted message %d.", message.id)
 
     @commands.Cog.listener()
     async def on_message_edit(self, _before: discord.Message, after: discord.Message):
@@ -236,6 +240,8 @@ class Tracking(commands.Cog):
                 msg.save()
             except DoesNotExist:
                 msg.save(force_insert=True)
+
+        logging.debug("Edited message %d.", after.id)
 
 
 async def setup(bot):
