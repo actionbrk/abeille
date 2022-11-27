@@ -11,7 +11,7 @@ import discord
 from discord.ext import commands
 from models.identity import Identity
 from models.message import Message, MessageDay, MessageIndex
-from peewee import Database, DoesNotExist, OperationalError
+from peewee import DoesNotExist, OperationalError
 from playhouse.sqlite_ext import SqliteExtDatabase
 
 from models.trackedguild import TrackedGuild
@@ -74,10 +74,6 @@ class Tracking(commands.Cog):
         # Update self.tracked_guilds on start
         self._load_tracked_guilds()
 
-    def get_guild_db(self, guild_id) -> Optional[Database]:
-        """Retourne la Database associée à l'ID de guild, None si pas trouvée"""
-        return self.tracked_guilds.get(guild_id)
-
     def _load_tracked_guilds(self):
         """Load tracked guilds and their settings"""
         logging.info("Loading tracked guilds...")
@@ -91,33 +87,37 @@ class Tracking(commands.Cog):
 
             try:
                 new_db.connect()
-                tracked_guild = TrackedGuild(new_db)
+                tracked_guild = TrackedGuild(new_db, guild_id)
             except OperationalError:
                 logging.error("Base de données indisponible pour %s", guild_id_str)
                 continue
             finally:
                 new_db.close()
 
-            with new_db:
-                with new_db.bind_ctx([Message, MessageIndex, MessageDay, Identity]):
-                    # Création tables
-                    new_db.create_tables([Message, MessageIndex, MessageDay, Identity])
-                    # Création triggers
-                    try:
-                        new_db.execute_sql(
-                            "CREATE TRIGGER message_ad AFTER DELETE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content); END;"
-                        )
-                        new_db.execute_sql(
-                            """CREATE TRIGGER message_ai AFTER INSERT ON message BEGIN
-                            INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content);
-                            END;"""
-                        )
-                        new_db.execute_sql(
-                            """CREATE TRIGGER message_au AFTER UPDATE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content);
-                            INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content); END;"""
-                        )
-                    except Exception as exc:
-                        logging.warning("Triggers could not be created: %s", exc)
+            with new_db.bind_ctx([Message, MessageIndex, MessageDay, Identity]):
+                # Création tables
+                new_db.create_tables([Message, MessageIndex, MessageDay, Identity])
+                # Création triggers
+                try:
+                    new_db.execute_sql(
+                        "CREATE TRIGGER message_ad AFTER DELETE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content); END;"
+                    )
+                    new_db.execute_sql(
+                        """CREATE TRIGGER message_ai AFTER INSERT ON message BEGIN
+                        INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content);
+                        END;"""
+                    )
+                    new_db.execute_sql(
+                        """CREATE TRIGGER message_au AFTER UPDATE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content);
+                        INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content); END;"""
+                    )
+                except Exception as exc:
+                    logging.warning("Triggers could not be created: %s", exc)
+
+                # Get what was the last saved message before the bot went down
+                tracked_guild.last_saved_msg = (
+                    Message.select().order_by(Message.message_id.desc()).get_or_none()
+                )
 
             # Ignorer channels
             if config.has_section("IgnoredChannels") and config.has_option(
@@ -146,10 +146,6 @@ class Tracking(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Message sent"""
-
-        # TODO: Enregistrer en BDD le timestamp du dernier message enregistré pour relancer un
-        # saveall depuis cette date lors du lancement du cog
-
         # Si message privé
         if not message.guild:
             return
@@ -176,6 +172,8 @@ class Tracking(commands.Cog):
 
         with db.bind_ctx([Message]):
             msg.save(force_insert=True)
+
+        logging.debug("Saved message %d.", message.id)
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
@@ -205,6 +203,8 @@ class Tracking(commands.Cog):
         # Supprimer
         with db.bind_ctx([Message]):
             Message.delete_by_id(message.id)
+
+        logging.debug("Deleted message %d.", message.id)
 
     @commands.Cog.listener()
     async def on_message_edit(self, _before: discord.Message, after: discord.Message):
@@ -240,6 +240,8 @@ class Tracking(commands.Cog):
                 msg.save()
             except DoesNotExist:
                 msg.save(force_insert=True)
+
+        logging.debug("Edited message %d.", after.id)
 
 
 async def setup(bot):

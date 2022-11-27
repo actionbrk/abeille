@@ -80,6 +80,14 @@ class Misc(commands.Cog):
         for command in list_commands:
             print(f"{command.name} ({command.id})")
 
+    @commands.command()
+    @commands.is_owner()
+    async def logging(self, ctx: commands.Context, level: str):
+        """Sync commands globally"""
+        level = level.upper()
+        logging.getLogger().setLevel(level)
+        await ctx.send(f"`Logging set to {level}`")
+
     async def _sync_commands(self, *, guild: Optional[discord.abc.Snowflake] = None):
         """Synchronize commands (to guild or globally)"""
         logging.info("Syncing commands...")
