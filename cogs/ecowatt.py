@@ -1,7 +1,10 @@
 import logging
 import os
-from datetime import date, datetime
+import urllib.request
+from datetime import datetime
+from io import BytesIO
 from typing import Dict, List
+from zipfile import ZipFile
 
 import discord
 import requests
@@ -26,6 +29,12 @@ VALUE_MESSAGE: Dict[int, str] = {
 }
 
 TIMEOUT = 10.0
+
+VIGILANCE_URL_CHECKSUM = (
+    "https://vigilance2019.meteofrance.com/data/vigilance_controle.txt"
+)
+VIGILANCE_URL_ZIP = "https://vigilance2019.meteofrance.com/data/vigilance.zip"
+VIGILANCE_FILE_NAME = "QGFR17_LFPW_.gif"
 
 
 class Ecowatt(commands.Cog):
@@ -120,6 +129,23 @@ class Ecowatt(commands.Cog):
         )
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(
+        name="vigilance",
+        description="Afficher le dernier bulletin vigilance Météo-France",
+    )
+    async def vigilance(self, interaction: discord.Interaction):
+        """Vigilance Météo-France"""
+        vigilance_zipfile = urllib.request.urlopen(VIGILANCE_URL_ZIP)
+
+        # vigilance_checksum_file = urllib.request.urlopen(VIGILANCE_URL_CHECKSUM)
+        # new_vigilance_checksum = vigilance_checksum_file.readlines()[1]
+        # if self.vigilance_checksum != new_vigilance_checksum:
+        # self.vigilance_checksum = new_vigilance_checksum
+
+        with ZipFile(BytesIO(vigilance_zipfile.read())) as zipfile:
+            with zipfile.open("QGFR17_LFPW_.gif") as imagefile:
+                await interaction.response.send_message(file=discord.File(imagefile))
 
 
 async def setup(bot):
