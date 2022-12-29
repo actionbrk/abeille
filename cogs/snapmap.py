@@ -133,19 +133,24 @@ class SnapmapView(discord.ui.View):
         current_snap = self.get_current_snap()
 
         # Location
-        title = current_snap["snapInfo"]["title"]
-        title_strings = title["strings"]
-        title_strings_text = [
-            location_title["text"]
-            for location_title in filter(
-                lambda locale_text: locale_text["locale"] == LOCATION_DISPLAY_LOCALE,
-                title_strings,
-            )
-        ]
-        if title_strings_text:
-            location_display_name = title_strings_text[0]
-        else:
-            location_display_name = title["fallback"]
+        try:
+            title = current_snap["snapInfo"]["title"]
+            title_strings = title["strings"]
+            title_strings_text = [
+                location_title["text"]
+                for location_title in filter(
+                    lambda locale_text: locale_text["locale"]
+                    == LOCATION_DISPLAY_LOCALE,
+                    title_strings,
+                )
+            ]
+            if title_strings_text:
+                location_display_name = title_strings_text[0]
+            else:
+                location_display_name = title["fallback"]
+        except KeyError:
+            logging.error("Cannot calculate snap location name.")
+            location_display_name = "Localisation indéterminée"
 
         content = [f"{location_display_name} <t:{current_snap['timestamp'][:-3]}:R>\n"]
 
