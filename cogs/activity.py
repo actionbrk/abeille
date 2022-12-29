@@ -43,27 +43,9 @@ class Activity(commands.Cog):
     )
     @app_commands.describe(
         terme="Le mot ou l'expression à rechercher.",
-        periode="Période de temps max sur laquelle dessiner la tendance.",
-    )
-    @app_commands.choices(
-        periode=[
-            Choice(name="6 mois", value=182),
-            Choice(name="1 an", value=365),
-            Choice(name="2 ans", value=730),
-            Choice(name="3 ans", value=1096),
-            Choice(name="Depuis le début", value=9999),
-        ]
     )
     @app_commands.guild_only()
-    async def trend_slash(
-        self, interaction: discord.Interaction, terme: str, periode: Choice[int]
-    ):
-        await interaction.response.defer(thinking=True)
-        guild_id = interaction.guild_id
-
-        if not guild_id:
-            await interaction.followup.send("Can't find guild id.")
-            return
+    async def trend_slash(self, interaction: discord.Interaction, terme: str):
 
         # FTS5 : can't tokenize expressions with less than 3 characters
         if len(terme) < 3:
@@ -72,87 +54,7 @@ class Activity(commands.Cog):
             )
             return
 
-        # FTS5 : enclose in double quotes
-        terme_fts = f'"{terme}"'
-
-        jour_debut = date.today() - timedelta(days=periode.value)
-        jour_fin = None
-        db = get_tracked_guild(self.bot, guild_id).database
-        guild_name = self.bot.get_guild(guild_id)
-
-        with db.bind_ctx([Message, MessageIndex, MessageDay]):
-
-            if periode.value == 9999:
-                oldest_date: MessageDay = (
-                    MessageDay.select().order_by(MessageDay.date.asc()).get()
-                )
-                jour_debut = oldest_date.date
-
-            jour_fin = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
-
-            # Messages de l'utilisateur dans la période
-            query = RawQuery(
-                """
-                SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
-                FROM messageindex
-                JOIN message ON messageindex.rowid = message.message_id
-                JOIN messageday ON DATE(message.timestamp)=messageday.date
-                WHERE messageindex MATCH ?
-                AND DATE(message.timestamp) >= ?
-                AND DATE(message.timestamp) <= ?
-                GROUP BY DATE(message.timestamp)
-                ORDER BY DATE(message.timestamp);""",
-                params=([terme_fts, jour_debut, jour_fin]),
-            )
-
-            # Exécution requête SQL
-            logging.info("Executing database request...")
-            query_sql, query_params = query.sql()
-            df = pandas.read_sql_query(query_sql, db.connection(), params=query_params)
-            logging.info("Database request answered.")
-
-        logging.info("Processing data and creating graph...")
-
-        # Remplir les dates manquantes
-        idx = pandas.date_range(jour_debut, jour_fin)
-        df = df.set_index("date")
-        df.index = pandas.DatetimeIndex(df.index)
-        df = df.reindex(idx, fill_value=0)
-
-        # Rolling average
-        df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
-
-        # Remove NaN values
-        df = df.dropna()
-
-        # Si emote custom : simplifier le nom pour titre DW
-        custom_emoji_str = emoji_to_str(terme)
-        if custom_emoji_str:
-            terme = custom_emoji_str
-
-        title_lines = textwrap.wrap(f"Tendances de <b>'{terme}'</b>")
-        title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
-        title = "<br>".join(title_lines)
-        fig: go.Figure = px.area(
-            df,
-            # x="date",
-            y="messages",
-            color_discrete_sequence=["yellow"],
-            # line_shape="spline",
-            template="plotly_dark",
-            title=title,
-            labels={"index": "", "messages": ""},
-        )
-        logging.info("Data processed and graph created. Exporting to image...")
-
-        img = fig.to_image(format="png", scale=2)
-
-        # Envoyer image
-        logging.info("Sending image to client...")
-        await interaction.followup.send(
-            file=discord.File(io.BytesIO(img), "abeille.png"),
-        )
-        logging.info("Image sent to client.")
+        await TrendView(interaction, self.bot, terme).start()
 
     @app_commands.command(
         name="compare", description="Comparer la tendance de deux expressions."
@@ -589,6 +491,161 @@ class RankView(discord.ui.View):
         user_ranks_str += "\n" + "\n".join(rankings_str_list)
 
         return user_ranks_str
+
+
+class TrendView(discord.ui.View):
+    def __init__(
+        self,
+        interaction: discord.Interaction,
+        bot: commands.Bot,
+        terme: str,
+    ):
+        # Timeout has to be strictly lower than 15min=900s (since interaction is dead after this time)
+        super().__init__(timeout=720)
+        self.initial_interaction = interaction
+        self.message: discord.InteractionMessage = None
+        self.bot = bot
+        self.guild_id = interaction.guild_id
+        self.terme = terme
+
+        # FTS5 : enclose in double quotes
+        self.terme_fts = f'"{terme}"'
+
+        self.df: pandas.DataFrame = None
+
+        guild_name = self.bot.get_guild(self.guild_id)
+        title_lines = textwrap.wrap(f"Tendances de <b>'{self.terme}'</b>")
+        title_lines.append(f"<i style='font-size: 10px'>Sur {guild_name}.</i>")
+        self.title = "<br>".join(title_lines)
+
+    async def interaction_check(self, interaction: discord.Interaction, /):
+        allowed = interaction.user.id == self.initial_interaction.user.id
+        if not allowed:
+            await interaction.response.send_message(
+                "Seul l'utilisateur ayant initié la commande peut toucher aux boutons. 🐝",
+                ephemeral=True,
+            )
+        return allowed
+
+    async def on_timeout(self) -> None:
+        self.clear_items()
+        await self.message.edit(view=self)
+
+    async def start(self):
+        await self.initial_interaction.response.defer(thinking=True)
+
+        db = get_tracked_guild(self.bot, self.guild_id).database
+
+        with db.bind_ctx([Message, MessageIndex, MessageDay]):
+
+            # Messages de l'utilisateur dans la période
+            query = RawQuery(
+                """
+                SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
+                FROM messageindex
+                JOIN message ON messageindex.rowid = message.message_id
+                JOIN messageday ON DATE(message.timestamp)=messageday.date
+                WHERE messageindex MATCH ?
+                GROUP BY DATE(message.timestamp)
+                ORDER BY DATE(message.timestamp);""",
+                params=([self.terme_fts]),
+            )
+
+            # Exécution requête SQL
+            logging.info("Executing database request...")
+            query_sql, query_params = query.sql()
+            df = pandas.read_sql_query(query_sql, db.connection(), params=query_params)
+            logging.info("Database request answered.")
+
+        logging.info("Processing data and creating graph...")
+
+        # Remplir les dates manquantes
+        df = df.set_index("date")
+        df.index = pandas.DatetimeIndex(df.index)
+        df = df.reindex(pandas.date_range(df.index.min(), df.index.max()), fill_value=0)
+
+        # Rolling average
+        df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
+
+        # Remove NaN values
+        df = df.dropna()
+
+        # Save this df that shows unlimited period
+        self.df = df
+
+        # Si emote custom : simplifier le nom pour titre DW
+        custom_emoji_str = emoji_to_str(self.terme)
+        if custom_emoji_str:
+            self.terme = custom_emoji_str
+
+        img = self.get_img(df)
+
+        # Envoyer image
+        logging.info("Sending image to client...")
+        await self.initial_interaction.followup.send(
+            file=discord.File(io.BytesIO(img), "abeille.png"), view=self
+        )
+        logging.info("Image sent to client.")
+        self.message = await self.initial_interaction.original_response()
+
+    @discord.ui.select(
+        placeholder="Changer la période",
+        options=[
+            discord.SelectOption(
+                label="Depuis le début",
+                value="0",
+                description="Afficher la tendance sans limite de période",
+                default=True,
+            ),
+            discord.SelectOption(
+                label="1 an", value="1", description="Afficher la tendance sur 1 an"
+            ),
+            discord.SelectOption(
+                label="2 ans", value="2", description="Afficher la tendance sur 2 ans"
+            ),
+            discord.SelectOption(
+                label="3 ans", value="3", description="Afficher la tendance sur 3 ans"
+            ),
+        ],
+    )
+    async def select_period(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        """Select period"""
+        # Update selected option
+        for option in select.options:
+            option.default = select.values[0] == option.value
+
+        years = int(select.values[0])
+        if years:
+            df = self.df.tail(365 * years)
+        else:
+            df = self.df
+
+        # Envoyer image
+        img = self.get_img(df)
+        logging.info("Sending image to client...")
+        await interaction.response.edit_message(
+            attachments=[discord.File(io.BytesIO(img), "abeille.png")],
+            view=self,
+        )
+        logging.info("Image sent to client.")
+
+    def get_img(self, df: pandas.DataFrame):
+        """Get figure"""
+        fig = px.area(
+            df,
+            # x="date",
+            y="messages",
+            color_discrete_sequence=["yellow"],
+            # line_shape="spline",
+            template="plotly_dark",
+            title=self.title,
+            labels={"index": "", "messages": ""},
+        )
+        fig.update_layout(yaxis_tickformat=".2%")
+        logging.info("Data processed and graph created. Exporting to image...")
+        return fig.to_image(format="png", scale=2)
 
 
 async def setup(bot):
