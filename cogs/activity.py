@@ -532,13 +532,17 @@ class TrendView(discord.ui.View):
         await self.message.edit(view=self)
 
     async def start(self):
-        await self.initial_interaction.response.defer(thinking=True)
+        # Reset default select option
+        self.set_selected_period("0")
 
         db = get_tracked_guild(self.bot, self.guild_id).database
 
         with db.bind_ctx([Message, MessageIndex, MessageDay]):
+            # Getting first and last day
+            first_day = MessageDay.select(fn.MIN(MessageDay.date)).scalar()
+            last_day = MessageDay.select(fn.MAX(MessageDay.date)).scalar()
 
-            # Messages de l'utilisateur dans la période
+            # Trend request
             query = RawQuery(
                 """
                 SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
@@ -562,7 +566,7 @@ class TrendView(discord.ui.View):
         # Remplir les dates manquantes
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
-        df = df.reindex(pandas.date_range(df.index.min(), df.index.max()), fill_value=0)
+        df = df.reindex(pandas.date_range(first_day, last_day), fill_value=0)
 
         # Rolling average
         df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
@@ -582,7 +586,7 @@ class TrendView(discord.ui.View):
 
         # Envoyer image
         logging.info("Sending image to client...")
-        await self.initial_interaction.followup.send(
+        await self.initial_interaction.response.send_message(
             file=discord.File(io.BytesIO(img), "abeille.png"), view=self
         )
         logging.info("Image sent to client.")
@@ -595,7 +599,6 @@ class TrendView(discord.ui.View):
                 label="Depuis le début",
                 value="0",
                 description="Afficher la tendance sans limite de période",
-                default=True,
             ),
             discord.SelectOption(
                 label="1 an", value="1", description="Afficher la tendance sur 1 an"
@@ -613,8 +616,7 @@ class TrendView(discord.ui.View):
     ):
         """Select period"""
         # Update selected option
-        for option in select.options:
-            option.default = select.values[0] == option.value
+        self.set_selected_period(select.values[0])
 
         years = int(select.values[0])
         if years:
@@ -646,6 +648,10 @@ class TrendView(discord.ui.View):
         fig.update_layout(yaxis_tickformat=".2%")
         logging.info("Data processed and graph created. Exporting to image...")
         return fig.to_image(format="png", scale=2)
+
+    def set_selected_period(self, option_value: str):
+        for option in self.select_period.options:
+            option.default = option_value == option.value
 
 
 async def setup(bot):
