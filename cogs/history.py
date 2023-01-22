@@ -220,6 +220,16 @@ class History(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
+    async def savechannel(self, ctx: commands.Context, channel_id: int):
+        """Force complete channel save"""
+        logging.info("'savechannel' command running...")
+        channel = self.bot.get_channel(channel_id)
+        save_result = await self._save_from_channel(channel)
+        logging.info(save_result)
+        logging.info("'savechannel' command done.")
+
+    @commands.command()
+    @commands.is_owner()
     async def channels(self, ctx: commands.Context, guild_id: Optional[int]):
         """Known channels"""
         max_lines = 15
