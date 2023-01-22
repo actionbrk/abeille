@@ -106,8 +106,8 @@ async def get_random_message(
         params_list: List[Any] = [channel_id]
         query_str = [
             """
-            message_id > ((SELECT min(message_id) FROM message AND channel_id=?) + (
-            ABS(RANDOM()) % ((SELECT max(message_id) FROM message AND channel_id=?)-(SELECT min(message_id) FROM message AND channel_id=?))
+            message_id > ((SELECT min(message_id) FROM message WHERE channel_id=?) + (
+            ABS(RANDOM()) % ((SELECT max(message_id) FROM message WHERE channel_id=?)-(SELECT min(message_id) FROM message WHERE channel_id=?))
             ))
             AND channel_id=?"""
         ]
