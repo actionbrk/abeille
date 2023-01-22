@@ -103,7 +103,7 @@ async def get_random_message(
     member: Optional[discord.Member],
 ):
     with db.bind_ctx([Message]):
-        params_list: List[Any] = [channel_id]
+        params_list: List[Any] = [channel_id, channel_id, channel_id, channel_id]
         query_str = [
             """
             message_id > ((SELECT min(message_id) FROM message WHERE channel_id=?) + (
