@@ -224,7 +224,7 @@ class History(commands.Cog):
         """Force complete channel save"""
         logging.info("'savechannel' command running...")
         channel = self.bot.get_channel(channel_id)
-        save_result = await self._save_from_channel(channel)
+        save_result = await self._save_from_channel(channel, count=None)
         logging.info(save_result)
         logging.info("'savechannel' command done.")
 
