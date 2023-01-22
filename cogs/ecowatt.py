@@ -37,6 +37,19 @@ VIGILANCE_URL_ZIP = "https://vigilance2019.meteofrance.com/data/vigilance.zip"
 VIGILANCE_FILE_NAME = "QGFR17_LFPW_.gif"
 
 
+CR_TODAYS_ANOMALIES_URL = (
+    "https://climatereanalyzer.org/wx/todays-weather/json/cfsr_t2_todays_anomalies.json"
+)
+REGIONS_NAMES = [
+    "Monde",
+    "Hémisphère Nord",
+    "Hémisphère Sud",
+    "Arctique",
+    "Antarctique",
+    "Tropiques",
+]
+
+
 class Ecowatt(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -146,6 +159,54 @@ class Ecowatt(commands.Cog):
         with ZipFile(BytesIO(vigilance_zipfile.read())) as zipfile:
             with zipfile.open("QGFR17_LFPW_.gif") as imagefile:
                 await interaction.response.send_message(file=discord.File(imagefile))
+
+    @app_commands.command(
+        name="climat",
+        description="L'anomalie de température dans le monde.",
+    )
+    async def climat_slash(self, interaction: discord.Interaction):
+        """Climate change"""
+
+        todays_anomalies_response = requests.get(
+            CR_TODAYS_ANOMALIES_URL,
+            timeout=TIMEOUT,
+        )
+
+        todays_anomalies_values: List[float] = next(
+            item
+            for item in todays_anomalies_response.json()
+            if item["name"] == "t2anom"
+        )["data"]
+
+        todays_anomalies = [
+            (REGIONS_NAMES[index], anomaly_value)
+            for index, anomaly_value in enumerate(todays_anomalies_values)
+        ]
+
+        to_send = []
+
+        for anomaly_region, anomaly_value in todays_anomalies:
+            to_send.append(
+                f"{anomaly_region} : **{anomaly_value:+}°C** {'🔸' if anomaly_value>0 else '🔹'}"
+            )
+
+        embed = discord.Embed(
+            title="Anomalie de température actuelle",
+            description="Aujourd'hui, par rapport aux températures de la période 1979-2000.",
+            color=Color.from_str("#ffb03b"),
+            url="https://climatereanalyzer.org/wx/todays-weather/?var_id=t2anom&ortho=3&wt=1",
+        )
+        embed.set_footer(
+            icon_url="https://climatereanalyzer.org/logos/favicon-cr.png",
+            text="Données fournies par ClimateReanalyzer.org",
+        )
+        embed.set_image(
+            url="https://climatereanalyzer.org/wx/todays-weather/input/gfs_world-wt_t2anom_d1.png"
+        )
+
+        embed.add_field(name="Par région", value="\n".join(to_send), inline=False)
+
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):
