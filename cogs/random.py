@@ -1,18 +1,18 @@
 import configparser
 import hashlib
+import logging
+import os
 import pathlib
 from typing import Any, List, Optional
 
 import discord
-import os
-from peewee import SQL, Database
-from cogs.tracking import get_tracked_guild
-
-from models.message import Message
 from discord import app_commands
-
 from discord.app_commands import Choice
 from discord.ext import commands
+from peewee import SQL, Database
+
+from cogs.tracking import get_tracked_guild
+from models.message import Message
 
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
@@ -50,49 +50,35 @@ class Random(commands.Cog):
         # TODO: contains (random qui contient un terme)
     ):
         """Random message"""
-        await interaction.response.defer(thinking=True)
-
         if not interaction.guild_id:
-            await interaction.followup.send("Can't find guild id.")
+            await interaction.response.send_message("Can't find guild id.")
             return
 
         # Specified channel or interaction channel by default
         channel_id = interaction.channel_id
 
-        fallback_channel = None
-
         if channel:
             # TODO: Prevent user if specified channel is nsfw while interaction is done in sfw channel
             if channel.is_nsfw() and not interaction.channel.is_nsfw():
-                fallback_channel = interaction.channel
+                await interaction.response.send_message(
+                    "Impossible de lancer un /random sur un salon NSFW depuis un salon SFW.",
+                    ephemeral=True,
+                )
+                return
             else:
                 channel_id = channel.id
 
         db = get_tracked_guild(self.bot, interaction.guild_id).database
 
-        message = await get_random_message(db, channel_id, media, length, member)
-
-        if message is None:
-            await interaction.followup.send(
-                f"Je n'ai pas trouvé de message correspondant sur le salon <#{channel_id}>."
-            )
-        else:
-            text_to_send = []
-            if message.content:
-                text_to_send.append(message.content)
-            if message.attachment_url:
-                text_to_send.append(message.attachment_url)
-            await interaction.followup.send(
-                "\n".join(text_to_send),
-                view=RandomView(
-                    channel_id, media, length, member, db, interaction.guild_id
-                ),
-            )
-            if fallback_channel:
-                await interaction.followup.send(
-                    f"Le salon spécifié étant NSFW, le /random a été réalisé sur le salon <#{fallback_channel.id}>.",
-                    ephemeral=True,
-                )
+        await RandomView(
+            interaction,
+            self.bot,
+            channel_id,
+            media,
+            length,
+            member,
+            db,
+        ).start()
 
 
 async def get_random_message(
@@ -101,7 +87,8 @@ async def get_random_message(
     media: Optional[bool],
     length: Optional[int],
     member: Optional[discord.Member],
-):
+) -> Message:
+    """Get a random message"""
     with db.bind_ctx([Message]):
         params_list: List[Any] = [channel_id, channel_id, channel_id, channel_id]
         query_str = [
@@ -133,6 +120,63 @@ async def get_random_message(
         return Message.select().where(sql).get_or_none()
 
 
+async def get_embed(message: discord.Message) -> discord.Embed:
+    reply_text = ""
+    reply_thumb = None
+    if message.reference:
+        try:
+            reference_msg: discord.Message = await message.channel.fetch_message(
+                message.reference.message_id
+            )
+            reply_text = f"> **{reference_msg.author.name}** · <t:{int(reference_msg.created_at.timestamp())}>\n> {reference_msg.content if reference_msg.content else '[Contenu multimédia]'}\n\n"
+            _reply_img = [
+                a
+                for a in reference_msg.attachments
+                if a.content_type
+                in ["image/jpeg", "image/png", "image/gif", "image/webp"]
+            ]
+            if _reply_img:
+                reply_thumb = _reply_img[0]
+        except Exception as e:
+            logging.warn("Failed to fetch message's reference.")
+
+    message_content = message.content
+
+    content = reply_text + message_content
+
+    em = discord.Embed(
+        description=content, timestamp=message.created_at, color=0x2F3136
+    )
+    em.set_author(name=message.author.name, icon_url=message.author.display_avatar.url)
+    em.set_footer(text="🐝")
+
+    image_preview = None
+    media_links = []
+    for a in message.attachments:
+        if (
+            a.content_type in ["image/jpeg", "image/png", "image/gif", "image/webp"]
+            and not image_preview
+        ):
+            image_preview = a.url
+        else:
+            media_links.append(a.url)
+    for msge in message.embeds:
+        if msge.image and not image_preview:
+            image_preview = msge.image.url
+        elif msge.thumbnail and not image_preview:
+            image_preview = msge.thumbnail.url
+
+    if image_preview:
+        em.set_image(url=image_preview)
+    if reply_thumb:
+        em.set_thumbnail(url=reply_thumb)
+    if media_links:
+        linkstxt = [f"[[{l.split('/')[-1]}]]({l})" for l in media_links]
+        em.add_field(name="Média(s)", value="\n".join(linkstxt))
+
+    return em
+
+
 async def setup(bot):
     await bot.add_cog(Random(bot))
 
@@ -140,53 +184,82 @@ async def setup(bot):
 class RandomView(discord.ui.View):
     def __init__(
         self,
+        interaction: discord.Interaction,
+        bot: commands.Bot,
         channel_id: int,
         media: Optional[bool],
         length: Optional[int],
         member: Optional[discord.Member],
         db: Database,
-        guild_id: int,
     ):
-        super().__init__(timeout=180)
+        # Timeout has to be strictly lower than 15min=900s (since interaction is dead after this time)
+        super().__init__(timeout=720)
+        self.initial_interaction = interaction
         self.channel_id = channel_id
         self.media = media
         self.length = length
         self.member = member
         self.db = db
-        self.guild_id = guild_id
+        self.message: discord.InteractionMessage = None
+        self.bot = bot
+        self.go_to_message_button: discord.ui.Button = None
 
-        # TODO: Config information should be loaded at startup in TrackedGuild object (tracking.py)
-        config = configparser.ConfigParser(allow_no_value=True)
-        p = pathlib.Path(__file__).parent.parent
-        config.read(p / "config.ini")
-        guild_id_str = str(guild_id)
-        self.again_role_needed = None
-        if config.has_option("RandomNeedsRole", guild_id_str):
-            self.again_role_needed = config.get("RandomNeedsRole", guild_id_str)
-        if config.has_option("RandomAgainEmoji", guild_id_str):
-            self.again.emoji = config.get("RandomAgainEmoji", guild_id_str)
+    async def on_timeout(self) -> None:
+        self.clear_items()
+        await self.message.edit(view=self)
 
-    @discord.ui.button(label="Encore", style=discord.ButtonStyle.primary)
-    async def again(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.again_role_needed:
-            if interaction.user.get_role(int(self.again_role_needed)) is None:
-                role_needed = interaction.guild.get_role(int(self.again_role_needed))
-                await interaction.user.send(
-                    f"Vous devez avoir le rôle **{role_needed.name}** pour utiliser ce bouton. 🐝",
-                )
-                return
-
-        message = await get_random_message(
+    async def start(self):
+        random_msg = await get_random_message(
             self.db, self.channel_id, self.media, self.length, self.member
         )
 
-        text_to_send = []
-        if message.content:
-            text_to_send.append(message.content)
-        if message.attachment_url:
-            text_to_send.append(message.attachment_url)
+        if random_msg is None:
+            await self.initial_interaction.response.send_message(
+                f"Je n'ai pas trouvé de message correspondant sur le salon <#{self.channel_id}>."
+            )
+        else:
+            discord_msg = await self.initial_interaction.channel.fetch_message(
+                random_msg.message_id
+            )
+            if discord_msg:
+                self.go_to_message_button = discord.ui.Button(
+                    label="Aller au message", url=discord_msg.jump_url
+                )
+                self.add_item(self.go_to_message_button)
+                await self.initial_interaction.response.send_message(
+                    embed=await get_embed(discord_msg),
+                    view=self,
+                )
+            else:
+                await self.initial_interaction.response.send_message(
+                    content="Une erreur s'est produite.",
+                    view=self,
+                )
 
-        # Make sure to update the message with our updated selves
-        await interaction.response.edit_message(
-            content="\n".join(text_to_send), view=self
+        self.message = await self.initial_interaction.original_response()
+
+    @discord.ui.button(label="Encore", style=discord.ButtonStyle.primary)
+    async def again(self, interaction: discord.Interaction, button: discord.ui.Button):
+        allowed = interaction.user.id == self.initial_interaction.user.id
+        if not allowed:
+            await interaction.response.send_message(
+                "Seul l'utilisateur ayant initié la commande peut toucher aux boutons. 🐝",
+                ephemeral=True,
+            )
+            return
+
+        random_msg = await get_random_message(
+            self.db, self.channel_id, self.media, self.length, self.member
         )
+        discord_msg = await interaction.channel.fetch_message(random_msg.message_id)
+        if discord_msg:
+            self.go_to_message_button.url = discord_msg.jump_url
+            await interaction.response.edit_message(
+                embed=await get_embed(discord_msg),
+                view=self,
+            )
+        else:
+            await interaction.response.edit_message(
+                content="Une erreur s'est produite.",
+                view=self,
+            )
