@@ -431,7 +431,9 @@ class RankView(discord.ui.View):
                         ephemeral=True,
                     )
 
-    @discord.ui.button(label="Et moi ?", style=discord.ButtonStyle.primary)
+    @discord.ui.button(
+        label="Afficher mon classement", style=discord.ButtonStyle.primary
+    )
     async def rank_me(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
