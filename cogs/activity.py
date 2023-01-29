@@ -350,7 +350,6 @@ class RankView(discord.ui.View):
         self.interaction_users: Set[int] = set()
 
         self.embed = discord.Embed()
-        self.embed.add_field(name="N'ont jamais utilisé cette expression", value="")
 
     async def interaction_check(self, interaction: discord.Interaction, /):
         """Allow user to click button once"""
@@ -479,16 +478,24 @@ class RankView(discord.ui.View):
             self.user_ranks.values()
         )
         if interaction_users_unranked:
-            self.embed.set_field_at(
-                index=0,
-                name="N'ont jamais utilisé cette expression",
-                value="\n".join(
-                    [
-                        f"{self.bot.get_user(unranked_user_id).mention}"
-                        for unranked_user_id in interaction_users_unranked
-                    ]
-                ),
+            field_name = "N'ont jamais utilisé cette expression"
+            field_value = "\n".join(
+                [
+                    f"{self.bot.get_user(unranked_user_id).mention}"
+                    for unranked_user_id in interaction_users_unranked
+                ]
             )
+            if not self.embed.fields:
+                self.embed.add_field(
+                    name=field_name,
+                    value=field_value,
+                )
+            else:
+                self.embed.set_field_at(
+                    index=0,
+                    name=field_name,
+                    value=field_value,
+                )
 
 
 class TrendView(discord.ui.View):
