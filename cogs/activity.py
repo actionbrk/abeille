@@ -363,7 +363,7 @@ class RankView(discord.ui.View):
         # Send rank for initial interaction user
         self.interaction_users.add(interaction.user.id)
         self.embed.set_footer(
-            text="⚠️ En développement. Merci de remonter les problèmes à Inaction.\nLes messages postés après ce message ne sont pas comptabilisés.",
+            text="Les messages postés après ce message ne sont pas comptabilisés.",
         )
         interaction_author_id = hashlib.pbkdf2_hmac(
             hash_name, str(interaction.user.id).encode(), salt, iterations
