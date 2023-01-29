@@ -350,6 +350,7 @@ class RankView(discord.ui.View):
         self.interaction_users: Set[int] = set()
 
         self.embed = discord.Embed()
+        self.embed.add_field(name="N'ont jamais utilisé cette expression", value="")
 
     async def interaction_check(self, interaction: discord.Interaction, /):
         """Allow user to click button once"""
@@ -478,7 +479,8 @@ class RankView(discord.ui.View):
             self.user_ranks.values()
         )
         if interaction_users_unranked:
-            self.embed.add_field(
+            self.embed.set_field_at(
+                index=0,
                 name="N'ont jamais utilisé cette expression",
                 value="\n".join(
                     [
