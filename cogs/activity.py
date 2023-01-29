@@ -348,7 +348,6 @@ class RankView(discord.ui.View):
 
         self.user_ranks: Dict[int, int | None] = {}
         self.interaction_users: Set[int] = set()
-        self.interaction_users_ranked: Set[int] = set()
 
         self.embed = discord.Embed()
 
@@ -389,7 +388,6 @@ class RankView(discord.ui.View):
                         # If user executed the command
                         if message.author_id == interaction_author_id:
                             user = interaction.user
-                            self.interaction_users_ranked.add(user.id)
                         else:
                             # Try to get real user ID if registered
                             try:
@@ -474,8 +472,8 @@ class RankView(discord.ui.View):
         self.embed.description = "\n".join(embed_desc)
 
         # Unranked interaction users
-        interaction_users_unranked = (
-            self.interaction_users - self.interaction_users_ranked
+        interaction_users_unranked = self.interaction_users - set(
+            self.user_ranks.values()
         )
         if interaction_users_unranked:
             self.embed.add_field(
