@@ -6,7 +6,7 @@ import logging
 import os
 import textwrap
 from datetime import date, timedelta
-from typing import Dict, List
+from typing import Dict, List, Set
 
 import discord
 import pandas
@@ -231,14 +231,20 @@ class Activity(commands.Cog):
         expression = expression.strip()
         # FTS5 : can't tokenize expressions with less than 3 characters
         if len(expression) < 3:
-            await interaction.followup.send(
-                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝"
+            await interaction.response.send_message(
+                "Je ne peux pas traiter les expressions de moins de 3 caractères. 🐝",
+                ephemeral=True,
+            )
+            return
+        if len(expression) > 200:
+            await interaction.response.send_message(
+                "Je ne peux pas traiter une expression aussi grande. 🐝", ephemeral=True
             )
             return
 
         guild_id = interaction.guild_id
         if not guild_id:
-            await interaction.followup.send("Can't find guild id.")
+            await interaction.response.send_message("Can't find guild id.")
             return
 
         db = get_tracked_guild(self.bot, guild_id).database
@@ -320,7 +326,7 @@ class Activity(commands.Cog):
 
 
 class RankView(discord.ui.View):
-    max_lines = 3
+    rankings_length = 10
 
     def __init__(
         self,
@@ -340,21 +346,70 @@ class RankView(discord.ui.View):
         # FTS5 : enclose in double quotes
         self.expression_fts = f'"{expression}"'
 
-        self.interaction_user_ranks: Dict[int, int] = dict()
+        self.user_ranks: Dict[int, int | None] = {}
+        self.interaction_users: Set[int] = set()
+        self.interaction_users_ranked: Set[int] = set()
+
+        self.embed = discord.Embed()
 
     async def interaction_check(self, interaction: discord.Interaction, /):
         """Allow user to click button once"""
-        return interaction.user.id not in self.interaction_user_ranks
+        return interaction.user.id not in self.interaction_users
 
     async def on_timeout(self) -> None:
-        self.rank_me.disabled = True
-        self.rank_me.label = "Expiré"
+        self.clear_items().stop()
         await self.message.edit(view=self)
 
     async def start(self, interaction: discord.Interaction):
         # Send rank for initial interaction user
+        self.interaction_users.add(interaction.user.id)
+        self.embed.set_footer(
+            text="⚠️ En développement. Merci de remonter les problèmes à Inaction.\nLes messages postés après ce message ne sont pas comptabilisés.",
+        )
+        interaction_author_id = hashlib.pbkdf2_hmac(
+            hash_name, str(interaction.user.id).encode(), salt, iterations
+        ).hex()
+
+        with self.db:
+            with self.db.bind_ctx([Message, MessageIndex, Identity]):
+                query_messages = (
+                    Message.select()
+                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
+                    .where(MessageIndex.match(self.expression_fts))
+                    .group_by(Message.author_id)
+                    .order_by(fn.COUNT(Message.message_id).desc())
+                )
+                messages: List[Message] = list(query_messages)
+
+                if messages:
+                    self.embed.title = f"`{len(messages)}` membres ont déjà utilisé l'expression *{self.expression}*.\n"
+                    for idx, message in enumerate(messages, 1):
+                        user = None
+
+                        # If user executed the command
+                        if message.author_id == interaction_author_id:
+                            user = interaction.user
+                            self.interaction_users_ranked.add(user.id)
+                        else:
+                            # Try to get real user ID if registered
+                            try:
+                                identity: Identity = Identity.get_by_id(
+                                    message.author_id
+                                )
+                                user = self.bot.get_user(identity.real_author_id)
+                            except DoesNotExist:
+                                pass
+
+                        self.user_ranks[idx] = user.id if user else None
+                else:
+                    self.embed.title = f"L'expression *{self.expression}* n'a jamais été employée sur ce serveur."
+                    await interaction.response.send_message(embed=self.embed)
+                    return
+
+        self._update_embed()
+
         await interaction.response.send_message(
-            self.get_rank_content(interaction.user),
+            embed=self.embed,
             view=self,
             allowed_mentions=discord.AllowedMentions(users=False),
         )
@@ -382,115 +437,56 @@ class RankView(discord.ui.View):
     async def rank_me(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
-        result = self.get_rank_content(interaction.user)
+        self.interaction_users.add(interaction.user.id)
+
+        self._update_embed()
+
         await interaction.response.edit_message(
-            content=result, allowed_mentions=discord.AllowedMentions(users=False)
+            embed=self.embed,
+            allowed_mentions=discord.AllowedMentions(users=False),
+            view=self,
         )
 
         await self.warn_if_not_registered(interaction, interaction.user.id)
 
-    def get_rank_content(self, interaction_user: discord.User):
+    def _update_embed(self):
+        embed_desc = []
+        for user_rank in sorted(self.user_ranks.keys()):
+            user_id = self.user_ranks.get(user_rank)
 
-        author = interaction_user
-        author_id = hashlib.pbkdf2_hmac(
-            hash_name, str(author.id).encode(), salt, iterations
-        ).hex()
-
-        with self.db:
-            with self.db.bind_ctx([Message, MessageIndex, Identity]):
-                rank_query = fn.rank().over(
-                    order_by=[fn.COUNT(Message.message_id).desc()]
-                )
-
-                subq = (
-                    Message.select(Message.author_id, rank_query.alias("rank"))
-                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
-                    .where(MessageIndex.match(self.expression_fts))
-                    .group_by(Message.author_id)
-                )
-
-                # Here we use a plain Select() to create our query.
-                query = (
-                    Select(columns=[subq.c.rank])
-                    .from_(subq)
-                    .where(subq.c.author_id == author_id)
-                    .bind(self.db)
-                )  # We must bind() it to the database.
-
-                rank = query.scalar()
-
-                # Add interaction user to interacted user dict
-                self.interaction_user_ranks[interaction_user.id] = rank
-
-                query_messages = (
-                    Message.select()
-                    .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
-                    .where(MessageIndex.match(self.expression_fts))
-                    .group_by(Message.author_id)
-                    .order_by(fn.COUNT(Message.message_id).desc())
-                )
-                messages: List[Message] = list(query_messages)
-
-                if messages:
-                    rankings_str_list = [
-                        f"**{len(messages)}** membres ont déjà utilisé l'expression *{self.expression}*.\n"
-                    ]
-                    for idx, message in enumerate(messages[: self.max_lines], 1):
-                        # Try to get real user ID if registered
-                        user = None
-                        try:
-                            identity: Identity = Identity.get_by_id(message.author_id)
-                            user = self.bot.get_user(identity.real_author_id)
-                        except DoesNotExist:
-                            pass
-
-                        # If user is registered
-                        if user is not None:
-                            user_str = user.mention
-                        # If user executed the command
-                        # elif idx in self.interaction_user_ranks.values():
-                        #     # TODO: It gets the user_id from the values of the dict....
-                        #     user_str = self.bot.get_user(
-                        #         list(self.interaction_user_ranks.keys())[
-                        #             list(self.interaction_user_ranks.values()).index(
-                        #                 idx
-                        #             )
-                        #         ]
-                        #     ).mention
-                        else:
-                            user_str = "*Utilisateur non enregistré*"
-
-                        if idx == 1:
-                            rankings_str_list.append(f"🥇 {user_str}")
-                        elif idx == 2:
-                            rankings_str_list.append(f"🥈 {user_str}")
-                        elif idx == 3:
-                            rankings_str_list.append(f"🥉 {user_str}")
-                        else:
-                            rankings_str_list.append(f"{idx}. {user_str}")
-
+            # If user interacted, show it in rankings anyway
+            if (user_rank <= self.rankings_length) or (
+                user_id in self.interaction_users
+            ):
+                if user_id is None:
+                    user_str = "*Utilisateur non enregistré*"
                 else:
-                    rankings_str_list = [
-                        "Cette expression n'a jamais été employée sur ce serveur."
+                    user_str = self.bot.get_user(user_id).mention
+                if user_rank == 1:
+                    embed_desc.append(f"🥇 {user_str}")
+                elif user_rank == 2:
+                    embed_desc.append(f"🥈 {user_str}")
+                elif user_rank == 3:
+                    embed_desc.append(f"🥉 {user_str}")
+                else:
+                    embed_desc.append(f"{user_rank}. {user_str}")
+
+        self.embed.description = "\n".join(embed_desc)
+
+        # Unranked interaction users
+        interaction_users_unranked = (
+            self.interaction_users - self.interaction_users_ranked
+        )
+        if interaction_users_unranked:
+            self.embed.add_field(
+                name="N'ont jamais utilisé cette expression",
+                value="\n".join(
+                    [
+                        f"{self.bot.get_user(unranked_user_id).mention}"
+                        for unranked_user_id in interaction_users_unranked
                     ]
-
-        user_ranks_str = ""
-        for user_id, user_rank in self.interaction_user_ranks.items():
-            user = self.bot.get_user(user_id)
-            if user_rank is None:
-                user_ranks_str += f"{user.mention} n'a jamais employé l'expression *{self.expression}*.\n"
-            elif user_rank == 1:
-                user_ranks_str += f"🥇 {user.mention} est le membre ayant le plus employé l'expression *{self.expression}*.\n"
-            elif user_rank == 2:
-                user_ranks_str += f"🥈 {user.mention} est le 2ème membre à avoir le plus employé l'expression *{self.expression}*.\n"
-            elif user_rank == 3:
-                user_ranks_str += f"🥉 {user.mention} est le 3ème membre à avoir le plus employé l'expression *{self.expression}*.\n"
-            else:
-                user_ranks_str += f"{user.mention} est le **{user_rank}ème** membre à avoir le plus employé l'expression *{self.expression}*.\n"
-
-        user_ranks_str += "\n" + "\n".join(rankings_str_list)
-
-        return user_ranks_str
+                ),
+            )
 
 
 class TrendView(discord.ui.View):
