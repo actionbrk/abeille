@@ -6,6 +6,7 @@ import discord
 from discord.abc import Snowflake
 from discord.ext import commands
 from peewee import DoesNotExist, fn
+from playhouse.shortcuts import model_to_dict
 
 from cogs.tracking import get_message, get_tracked_guild, get_tracked_guilds
 from models.message import Message
@@ -88,15 +89,16 @@ class History(commands.Cog):
                     )
 
                     try:
+                        oldest_msg_dict = model_to_dict(oldest_msg)
                         logging.info(
                             "Saving older messages for channel '%s' [%d], before %s...",
                             channel.name,
                             channel.id,
-                            oldest_msg.timestamp,
+                            oldest_msg_dict["timestamp"],
                         )
                         save_result = await self._save_from_channel(
                             channel,
-                            before=datetime.fromisoformat(str(oldest_msg.timestamp)),
+                            before=datetime.fromisoformat(oldest_msg_dict["timestamp"]),
                         )
                         logging.info(save_result)
                         logging.info(

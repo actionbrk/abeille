@@ -137,7 +137,7 @@ async def get_embed(message: discord.Message) -> discord.Embed:
             ]
             if _reply_img:
                 reply_thumb = _reply_img[0]
-        except Exception as e:
+        except Exception as exc:
             logging.warn("Failed to fetch message's reference.")
 
     message_content = message.content
@@ -148,7 +148,7 @@ async def get_embed(message: discord.Message) -> discord.Embed:
         description=content, timestamp=message.created_at, color=0x2F3136
     )
     em.set_author(name=message.author.name, icon_url=message.author.display_avatar.url)
-    em.set_footer(text="🐝")
+    em.set_footer(text=f"#{message.channel.name}")
 
     image_preview = None
     media_links = []
@@ -255,11 +255,13 @@ class RandomView(discord.ui.View):
         if discord_msg:
             self.go_to_message_button.url = discord_msg.jump_url
             await interaction.response.edit_message(
+                content=None,
                 embed=await get_embed(discord_msg),
                 view=self,
             )
         else:
             await interaction.response.edit_message(
                 content="Une erreur s'est produite.",
+                embed=None,
                 view=self,
             )
