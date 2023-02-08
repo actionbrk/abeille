@@ -1,15 +1,12 @@
 import logging
-import os
-from datetime import date, datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import discord
 import requests
-from discord import Color, app_commands
+from discord import app_commands
 from discord.ext import commands
 
 from models.snapmap import LocationInfo, Snap
-
 
 GET_PLAYLIST_URL = "https://ms.sc-jpl.com/web/getPlaylist"
 GET_LATEST_TILE_SET_URL = "https://ms.sc-jpl.com/web/getLatestTileSet"
@@ -150,7 +147,7 @@ class SnapmapView(discord.ui.View):
                 location_display_name = title["fallback"]
         except KeyError:
             logging.error("Cannot calculate snap location name.")
-            location_display_name = "Localisation indéterminée"
+            location_display_name = self.geocoded_location_name
 
         content = [f"{location_display_name} <t:{current_snap['timestamp'][:-3]}:R>\n"]
 
