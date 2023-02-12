@@ -346,10 +346,16 @@ class RankView(discord.ui.View):
         # FTS5 : enclose in double quotes
         self.expression_fts = f'"{expression}"'
 
+        # Rank - User ID
         self.user_ranks: Dict[int, int | None] = {}
-        self.interaction_users: Set[int] = set()
 
+        # Rank - User message count
+        self.user_counts: Dict[int, int] = {}
+        self.user_counts_total = None
+
+        self.interaction_users: Set[int] = set()
         self.embed = discord.Embed()
+        self.show_premium_infos = None
 
     async def interaction_check(self, interaction: discord.Interaction, /):
         """Allow user to click button once"""
@@ -360,25 +366,40 @@ class RankView(discord.ui.View):
         await self.message.edit(view=self)
 
     async def start(self, interaction: discord.Interaction):
+        premium_role = interaction.guild.premium_subscriber_role
+        self.show_premium_infos = (
+            premium_role
+            and premium_role.display_icon
+            and interaction.user.premium_since is not None
+        )
         # Send rank for initial interaction user
         self.interaction_users.add(interaction.user.id)
-        self.embed.set_footer(
-            text="Les messages postés après ce message ne sont pas comptabilisés.",
-        )
+        if self.show_premium_infos:
+            self.embed.color = (
+                await self.bot.fetch_user(interaction.user.id)
+            ).accent_color
+            self.embed.set_footer(
+                icon_url=premium_role.display_icon.url,
+                text=f"Infos supplémentaires affichées grâce au rôle {premium_role.name} de {interaction.user.name}.",
+            )
         interaction_author_id = hashlib.pbkdf2_hmac(
             hash_name, str(interaction.user.id).encode(), salt, iterations
         ).hex()
 
         with self.db:
             with self.db.bind_ctx([Message, MessageIndex, Identity]):
+                logging.info("Executing database request...")
                 query_messages = (
-                    Message.select()
+                    Message.select(
+                        Message.author_id, fn.COUNT(Message.message_id).alias("count")
+                    )
                     .join(MessageIndex, on=(Message.message_id == MessageIndex.rowid))
                     .where(MessageIndex.match(self.expression_fts))
                     .group_by(Message.author_id)
                     .order_by(fn.COUNT(Message.message_id).desc())
                 )
                 messages: List[Message] = list(query_messages)
+                logging.info("Database request answered.")
 
                 if messages:
                     self.embed.title = f"`{len(messages)}` membres ont déjà utilisé l'expression *{self.expression}*.\n"
@@ -399,6 +420,8 @@ class RankView(discord.ui.View):
                                 pass
 
                         self.user_ranks[idx] = user.id if user else None
+                        self.user_counts[idx] = message.count
+                        self.user_counts_total = sum(self.user_counts.values())
                 else:
                     self.embed.title = f"L'expression *{self.expression}* n'a jamais été employée sur ce serveur."
                     await interaction.response.send_message(embed=self.embed)
@@ -453,15 +476,23 @@ class RankView(discord.ui.View):
         embed_desc = []
         for user_rank in sorted(self.user_ranks.keys()):
             user_id = self.user_ranks.get(user_rank)
+            user_count = self.user_counts.get(user_rank)
 
             # If user interacted, show it in rankings anyway
             if (user_rank <= self.rankings_length) or (
                 user_id in self.interaction_users
             ):
+                # User name if found
                 if user_id is None:
                     user_str = "*Utilisateur non enregistré*"
                 else:
                     user_str = self.bot.get_user(user_id).mention
+
+                # User message count if premium
+                if self.show_premium_infos:
+                    user_str += f" `~{(user_count/self.user_counts_total)*100:.0f}%`"
+
+                # User rank
                 if user_rank == 1:
                     embed_desc.append(f"🥇 {user_str}")
                 elif user_rank == 2:
