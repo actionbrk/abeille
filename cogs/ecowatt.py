@@ -187,7 +187,7 @@ class Ecowatt(commands.Cog):
 
         for anomaly_region, anomaly_value in todays_anomalies:
             to_send.append(
-                f"{anomaly_region} : **{anomaly_value:+}°C** {'🔸' if anomaly_value>0 else '🔹'}"
+                f"{anomaly_region} : **{anomaly_value:+}°C** {'🔥' if anomaly_value>0 else '❄️'}"
             )
 
         embed = discord.Embed(
