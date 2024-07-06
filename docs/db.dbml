@@ -1,0 +1,41 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table identity {
+  id integer [primary key]
+  hashed_author_id integer [not null, unique, note: 'test']
+  author_id timestamp [unique]
+
+  indexes {
+    hashed_author_id [unique]
+    author_id [unique]
+  }
+}
+
+Table message {
+  message_id integer [primary key]
+  identity_id integer [not null]
+  channel_id integer [not null]
+  timestamp timestamp [not null]
+  content string
+  reference_message_id int
+}
+
+Table messageday {
+  date date [primary key]
+  count integer [not null]
+}
+
+Table attachment {
+  id integer
+  message_id integer
+  url string
+  filename string
+  size integer
+  voice_message_duration float
+  is_spoiler bool
+}
+
+
+Ref: identity.id < message.identity_id
+Ref: attachment.message_id < message.message_id

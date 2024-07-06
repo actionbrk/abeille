@@ -11,7 +11,7 @@ from models import message
 class MessageDay(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.task_messageday.start()
+        # self.task_messageday.start()
 
     def cog_unload(self):
         self.task_messageday.cancel()

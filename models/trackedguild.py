@@ -1,7 +1,5 @@
 from typing import List
-from peewee import Database
-
-from models.message import Message
+from sqlite_utils import Database
 
 
 class TrackedGuild:
@@ -13,4 +11,4 @@ class TrackedGuild:
         self.database = database
         self.guild_id = guild_id
         self.ignored_channels_ids: List[int] = []
-        self.last_saved_msg: Message | None = None
+        self.last_saved_msg: dict | None = None
