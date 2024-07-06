@@ -8,7 +8,7 @@ import pandas
 from discord.ext import commands
 from peewee import RawQuery
 
-from cogs.tracking import get_tracked_guild
+from cogs.tracking import get_tracked_guild, get_tracked_guilds
 from models.message import MessageIndex
 
 # Chargement paramètres DB
