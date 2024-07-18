@@ -62,34 +62,34 @@ def get_tracked_guilds(bot: commands.Bot) -> Dict[int, TrackedGuild]:
         raise Exception("Impossible de récupérer le cog Tracking")
     return tracking_cog.tracked_guilds
 
+async def load_tracked_guilds(bot: commands.Bot):
+    """Load tracked guilds"""
+    tracking_cog: Optional["Tracking"] = bot.get_cog("Tracking")  # type: ignore
+    if tracking_cog is None:
+        raise Exception("Impossible de récupérer le cog Tracking")
+    return await tracking_cog.load_tracked_guilds()
 
 class Tracking(commands.Cog):
     """Tracking module"""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
         self.tracked_guilds: Dict[int, TrackedGuild] = {}
 
-        # Update self.tracked_guilds on start
-        self._load_tracked_guilds()
-
-    def _load_tracked_guilds(self):
+    async def load_tracked_guilds(self):
         """Load tracked guilds and their settings"""
-        logging.info("Loading tracked guilds...")
-        config = configparser.ConfigParser(allow_no_value=True)
-        p = pathlib.Path(__file__).parent.parent
-        config.read(p / "config.ini")
-        for guild_id_str in config["Tracked"]:
-            guild_id = int(guild_id_str)
+        logging.info("Loading available guilds...")
+            
+        async for guild in self.bot.fetch_guilds():
 
+            guild_id = guild.id
             new_db = SqliteExtDatabase(pathlib.Path(dbs_folder_path) / f"{guild_id}.db")
 
             try:
                 new_db.connect()
                 tracked_guild = TrackedGuild(new_db, guild_id)
             except OperationalError:
-                logging.error("Base de données indisponible pour %s", guild_id_str)
+                logging.error("Base de données indisponible pour %d", guild_id)
                 continue
             finally:
                 new_db.close()
@@ -119,26 +119,8 @@ class Tracking(commands.Cog):
                     Message.select().order_by(Message.message_id.desc()).get_or_none()
                 )
 
-            # Ignorer channels
-            if config.has_section("IgnoredChannels") and config.has_option(
-                "IgnoredChannels", guild_id_str
-            ):
-                logging.info("Loading ignored channels...")
-                ignored_channels_ids = [
-                    int(ignored_channel_str.strip())
-                    for ignored_channel_str in config.get(
-                        "IgnoredChannels", guild_id_str
-                    ).split(",")
-                ]
-                tracked_guild.ignored_channels_ids = ignored_channels_ids
-                logging.info(
-                    "%d channel(s) ignored for tracked guild %d.",
-                    len(ignored_channels_ids),
-                    guild_id,
-                )
-
             self.tracked_guilds[guild_id] = tracked_guild
-            logging.info("Guild '%s' is tracked.", guild_id_str)
+            logging.info("Guild '%d' is tracked.", guild_id)
 
         total_tracked = len(self.tracked_guilds)
         logging.info("%d guild(s) are being tracked.", total_tracked)

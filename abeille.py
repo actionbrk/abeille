@@ -9,6 +9,8 @@ import sys
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from cogs.tracking import load_tracked_guilds
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +40,7 @@ class AbeilleBot(commands.Bot):
     """Abeille Bot"""
 
     async def on_ready(self):
+        await load_tracked_guilds(self)
         logging.info("Ready!")
 
 
