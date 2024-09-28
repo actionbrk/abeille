@@ -30,8 +30,9 @@ class Misc(commands.Cog):
             pathlib.Path(dbs_folder_path) / f"{interaction.guild_id}.db"
         )
         size_go = f"{size_bytes/(1024*1024*1024):.1f}"
-        owner = self.bot.get_user(self.bot.owner_id)
-        bot_name = f"{self.bot.user.name}#{self.bot.user.discriminator}"
+        app_info = await self.bot.application_info()
+        bot_user = self.bot.user
+        bot_name = f"{bot_user.name}#{bot_user.discriminator}" if bot_user else "Unknown"
 
         embed = discord.Embed(
             title=f"{size_go} GB d'espace est utilisé pour *{interaction.guild.name}*",
@@ -48,11 +49,11 @@ class Misc(commands.Cog):
         )
         embed.set_author(
             name=bot_name,
-            icon_url=self.bot.user.avatar.url,
+            icon_url=bot_user.avatar.url if bot_user and bot_user.avatar else None,
         )
         embed.set_footer(
-            text=f"{bot_name} est maintenu par {owner.name}#{owner.discriminator}",
-            icon_url=owner.avatar.url,
+            text=f"{bot_name} est maintenu par {app_info.owner.name}",
+            icon_url=app_info.owner.avatar.url if app_info.owner.avatar else None,
         )
         await interaction.response.send_message(embed=embed)
 
