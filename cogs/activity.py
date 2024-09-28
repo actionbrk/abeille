@@ -46,6 +46,7 @@ class Activity(commands.Cog):
     )
     @app_commands.guild_only()
     async def trend_slash(self, interaction: discord.Interaction, terme: str):
+        await interaction.response.defer()
 
         # FTS5 : can't tokenize expressions with less than 3 characters
         if len(terme) < 3:
@@ -622,7 +623,7 @@ class TrendView(discord.ui.View):
 
         # Envoyer image
         logging.info("Sending image to client...")
-        await self.initial_interaction.response.send_message(
+        await self.initial_interaction.followup.send(
             file=discord.File(io.BytesIO(img), "abeille.png"), view=self
         )
         logging.info("Image sent to client.")
