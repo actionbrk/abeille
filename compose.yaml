@@ -15,6 +15,14 @@ services:
       - .env
     volumes:
       - abeille-data:/db
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .mypy_cache
+            - .vscode
     # ports:
     #   - 8000:8000
 volumes:
