@@ -99,6 +99,7 @@ class History(commands.Cog):
                         save_result = await self._save_from_channel(
                             channel,
                             before=datetime.fromisoformat(oldest_msg_dict["timestamp"]),
+                            count=None
                         )
                         logging.info(save_result)
                         logging.info(
@@ -112,6 +113,7 @@ class History(commands.Cog):
                             after=datetime.fromisoformat(
                                 str(tracked_guild.last_saved_msg.timestamp)
                             ),
+                            count=None
                         )
                         logging.info(save_result)
                     except discord.Forbidden:
@@ -198,7 +200,7 @@ class History(commands.Cog):
 
                 # Progress
                 if save_result.trouves % 500 == 0:
-                    logging.info(f"{save_result.trouves} / {count}")
+                    logging.info("Channel '%s' progress: %d messages processed...", channel.name, save_result.trouves)
 
                 # Ignorer messages bot
                 if message.author.bot:
