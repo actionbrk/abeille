@@ -19,7 +19,7 @@ class MessageDay(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def messageday(self, ctx: commands.Context):
-        """Force MessaegDay update"""
+        """Force MessageDay update"""
         await self._update_messageday()
 
     @tasks.loop(hours=24)
