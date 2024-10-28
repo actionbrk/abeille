@@ -66,7 +66,7 @@ class Misc(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def clear(self, ctx: commands.Context, guild_str: Optional[str] = None):
-        """Sync commands globally"""
+        """Clear commands for a guild"""
         guild = None
         if guild_str:
             guild = discord.Object(id=int(guild_str))
@@ -75,7 +75,7 @@ class Misc(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def fetch(self, ctx: commands.Context):
-        """Sync commands globally"""
+        """Fetch commands globally"""
         list_commands = await self.bot.tree.fetch_commands()
         print("fetching...")
         for command in list_commands:
@@ -84,7 +84,7 @@ class Misc(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def logging(self, ctx: commands.Context, level: str):
-        """Sync commands globally"""
+        """Define logging level"""
         level = level.upper()
         logging.getLogger().setLevel(level)
         await ctx.send(f"`Logging set to {level}`")
