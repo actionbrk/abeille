@@ -25,3 +25,5 @@ jobs:
       with:
         push: true
         tags: actionbrk/abeille:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
