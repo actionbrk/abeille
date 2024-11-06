@@ -32,7 +32,9 @@ class Misc(commands.Cog):
         size_go = f"{size_bytes/(1024*1024*1024):.1f}"
         app_info = await self.bot.application_info()
         bot_user = self.bot.user
-        bot_name = f"{bot_user.name}#{bot_user.discriminator}" if bot_user else "Unknown"
+        bot_name = (
+            f"{bot_user.name}#{bot_user.discriminator}" if bot_user else "Unknown"
+        )
 
         embed = discord.Embed(
             title=f"{size_go} GB d'espace est utilisé pour *{interaction.guild.name}*",

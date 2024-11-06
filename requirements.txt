@@ -1,10 +1,7 @@
-black==24.4.2
 discord.py==2.4.0
 kaleido==0.2.1
-mypy==1.10.1
-pandas==2.2.2
-peewee==3.17.6
-plotly==5.22.0
-pylint==3.2.5
+pandas==2.2.3
+peewee==3.17.7
+plotly==5.24.1
 python-dotenv==1.0.1
 requests==2.32.3
