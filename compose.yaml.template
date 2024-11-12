@@ -1,0 +1,10 @@
+services:
+  server:
+    image: actionbrk/abeille
+    container_name: abeille
+    env_file:
+      - .env
+    volumes:
+      - abeille-data:/db
+volumes:
+  abeille-data:
