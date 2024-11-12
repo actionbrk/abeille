@@ -9,7 +9,7 @@
 **/.venv
 **/.classpath
 **/.dockerignore
-**/.env
+**/.env*
 **/.git
 **/.gitignore
 **/.project
@@ -23,7 +23,7 @@
 **/bin
 **/charts
 **/docker-compose*
-**/compose.y*ml
+**/compose.y*ml*
 **/Dockerfile*
 **/node_modules
 **/npm-debug.log
@@ -34,6 +34,3 @@ LICENSE
 README.md
 **/.mypy_cache
 **/.github
-
-# Abeille
-config.ini
