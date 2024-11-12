@@ -8,7 +8,6 @@ import sys
 
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
 from cogs.tracking import load_tracked_guilds
 
 
@@ -21,8 +20,6 @@ logging.basicConfig(
 # logger = logging.getLogger("peewee")
 # logger.addHandler(logging.StreamHandler())
 # logger.setLevel(logging.DEBUG)
-
-load_dotenv()
 
 discord_token = os.getenv("DISCORD_TOKEN")
 

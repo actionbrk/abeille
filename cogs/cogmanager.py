@@ -1,10 +1,4 @@
 from discord.ext import commands
-import discord
-
-from common.utils import DEV_GUILD
-
-# TODO: Supprimer
-MY_GUILD = discord.Object(id=504718202010468372)
 
 
 class CogManager(commands.Cog):

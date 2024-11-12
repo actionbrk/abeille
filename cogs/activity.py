@@ -26,7 +26,6 @@ from cogs.tracking import get_tracked_guild
 PERIODE = 1100
 ROLLING_AVERAGE = 14
 
-token = os.getenv("DW_TOKEN")
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore

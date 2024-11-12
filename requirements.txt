@@ -3,5 +3,4 @@ kaleido==0.2.1
 pandas==2.2.3
 peewee==3.17.7
 plotly==5.24.1
-python-dotenv==1.0.1
 requests==2.32.3

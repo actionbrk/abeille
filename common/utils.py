@@ -1,15 +1,8 @@
 """ Fonctions transverses """
 
-import os
 import re
 from typing import Optional
 
-import discord
-from dotenv import load_dotenv
-
-load_dotenv()
-
-DEV_GUILD = discord.Object(id=int(os.getenv("DEV_GUILD_ID")))
 CUSTOM_EMOJI = r"<a{0,1}:(\S+):(\d+)>"
 
 

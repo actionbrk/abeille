@@ -7,14 +7,12 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import discord
 from discord.ext import commands
 from discord import app_commands
-from dotenv import load_dotenv
 from peewee import DoesNotExist
 
 from models.message import Message
 from cogs.tracking import get_tracked_guild
 
 # Chargement paramètres DB
-# load_dotenv()
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore

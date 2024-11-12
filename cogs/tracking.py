@@ -16,8 +16,6 @@ from playhouse.sqlite_ext import SqliteExtDatabase
 
 from models.trackedguild import TrackedGuild
 
-# Chargement .env
-# load_dotenv()
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore
@@ -62,12 +60,14 @@ def get_tracked_guilds(bot: commands.Bot) -> Dict[int, TrackedGuild]:
         raise Exception("Impossible de récupérer le cog Tracking")
     return tracking_cog.tracked_guilds
 
+
 async def load_tracked_guilds(bot: commands.Bot):
     """Load tracked guilds"""
     tracking_cog: Optional["Tracking"] = bot.get_cog("Tracking")  # type: ignore
     if tracking_cog is None:
         raise Exception("Impossible de récupérer le cog Tracking")
     return await tracking_cog.load_tracked_guilds()
+
 
 class Tracking(commands.Cog):
     """Tracking module"""
@@ -79,7 +79,7 @@ class Tracking(commands.Cog):
     async def load_tracked_guilds(self):
         """Load tracked guilds and their settings"""
         logging.info("Loading available guilds...")
-            
+
         async for guild in self.bot.fetch_guilds():
 
             guild_id = guild.id
