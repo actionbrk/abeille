@@ -26,3 +26,8 @@ You can now start Abeille by running the following command:
 ```bash
 docker compose up -d --pull always
 ```
+
+## Develop
+
+1. Clone project.
+2. Run `docker compose up --watch --build`.
