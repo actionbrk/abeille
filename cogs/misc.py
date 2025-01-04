@@ -2,7 +2,6 @@
 
 import logging
 import os
-import pathlib
 import platform
 import sqlite3
 from typing import Optional
@@ -10,8 +9,6 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
-
-dbs_folder_path = os.getenv("DBS_FOLDER_PATH")
 
 
 class Misc(commands.Cog):
@@ -26,9 +23,7 @@ class Misc(commands.Cog):
     @app_commands.guild_only()
     async def info(self, interaction: discord.Interaction):
         """Shown instance information"""
-        size_bytes = os.path.getsize(
-            pathlib.Path(dbs_folder_path) / f"{interaction.guild_id}.db"
-        )
+        size_bytes = os.path.getsize(f"/db/{interaction.guild_id}.db")
         size_go = f"{size_bytes/(1024*1024*1024):.1f}"
         app_info = await self.bot.application_info()
         bot_user = self.bot.user

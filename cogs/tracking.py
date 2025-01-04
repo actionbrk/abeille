@@ -1,10 +1,8 @@
 """ Module d'enregistrement des messages """
 
-import configparser
 import hashlib
 import logging
 import os
-import pathlib
 from typing import Dict, List, Optional
 
 import discord
@@ -19,7 +17,6 @@ from models.trackedguild import TrackedGuild
 salt = os.getenv("SALT").encode()  # type:ignore
 iterations = int(os.getenv("ITER"))  # type:ignore
 hash_name: str = os.getenv("HASHNAME")  # type:ignore
-dbs_folder_path = os.getenv("DBS_FOLDER_PATH")
 
 
 def get_message(message: discord.Message) -> Message:
@@ -83,7 +80,7 @@ class Tracking(commands.Cog):
         async for guild in self.bot.fetch_guilds():
 
             guild_id = guild.id
-            new_db = SqliteExtDatabase(pathlib.Path(dbs_folder_path) / f"{guild_id}.db")
+            new_db = SqliteExtDatabase(f"/db/{guild_id}.db")
 
             try:
                 new_db.connect()
