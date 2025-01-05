@@ -27,6 +27,14 @@ You can now start Abeille by running the following command:
 docker compose up -d --pull always
 ```
 
+> By default, the `compose.yaml` file will pull the `latest` tag, which is pushed to Docker Hub whenever the `master` branch is updated.
+So you may have to run `docker compose down/up` from time to time in order to get the latest features (and run `docker image prune -a` to make some space).
+
+Check logs by running:
+```bash
+docker logs abeille
+```
+
 ## Develop
 
 1. Clone project.
