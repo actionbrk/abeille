@@ -5,7 +5,7 @@ import io
 import logging
 import os
 import textwrap
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Dict, List, Set
 
 import discord
@@ -23,7 +23,6 @@ from peewee import RawQuery, Select, fn, DoesNotExist, Database
 
 from cogs.tracking import get_tracked_guild
 
-PERIODE = 1100
 ROLLING_AVERAGE = 14
 
 salt = os.getenv("SALT").encode()  # type:ignore
@@ -543,6 +542,8 @@ class TrendView(discord.ui.View):
         self.bot = bot
         self.guild_id = interaction.guild_id
         self.terme = terme
+        self.selected_period = "0"
+        self.selected_rolling = "14"
 
         # FTS5 : enclose in double quotes
         self.terme_fts = f'"{terme}"'
@@ -568,8 +569,9 @@ class TrendView(discord.ui.View):
         await self.message.edit(view=self)
 
     async def start(self):
-        # Reset default select option
-        self.set_selected_period("0")
+        # Reset default select options
+        self.set_selected_period(self.selected_period)
+        self.set_selected_rolling(self.selected_rolling)
 
         db = get_tracked_guild(self.bot, self.guild_id).database
 
@@ -591,7 +593,7 @@ class TrendView(discord.ui.View):
                 params=([self.terme_fts]),
             )
 
-            # Exécution requête SQL
+            # Execute SQL query
             logging.info("Executing database request...")
             query_sql, query_params = query.sql()
             df = pandas.read_sql_query(query_sql, db.connection(), params=query_params)
@@ -599,34 +601,20 @@ class TrendView(discord.ui.View):
 
         logging.info("Processing data and creating graph...")
 
-        # Remplir les dates manquantes
+        # Fill missing dates
         df = df.set_index("date")
         df.index = pandas.DatetimeIndex(df.index)
         df = df.reindex(pandas.date_range(first_day, last_day), fill_value=0)
 
-        # Rolling average
-        df["messages"] = df.rolling(ROLLING_AVERAGE).mean()
-
-        # Remove NaN values
-        df = df.dropna()
-
         # Save this df that shows unlimited period
         self.df = df
 
-        # Si emote custom : simplifier le nom pour titre DW
+        # Custom emote: sanitize name
         custom_emoji_str = emoji_to_str(self.terme)
         if custom_emoji_str:
             self.terme = custom_emoji_str
 
-        img = self.get_img(df)
-
-        # Envoyer image
-        logging.info("Sending image to client...")
-        await self.initial_interaction.followup.send(
-            file=discord.File(io.BytesIO(img), "abeille.png"), view=self
-        )
-        logging.info("Image sent to client.")
-        self.message = await self.initial_interaction.original_response()
+        await self.send_img()
 
     @discord.ui.select(
         placeholder="Changer la période",
@@ -637,13 +625,19 @@ class TrendView(discord.ui.View):
                 description="Afficher la tendance sans limite de période",
             ),
             discord.SelectOption(
-                label="1 an", value="1", description="Afficher la tendance sur 1 an"
+                label="Tendance sur 1 an",
+                value="1",
+                description="Afficher la tendance sur 1 an",
             ),
             discord.SelectOption(
-                label="2 ans", value="2", description="Afficher la tendance sur 2 ans"
+                label="Tendance sur 2 ans",
+                value="2",
+                description="Afficher la tendance sur 2 ans",
             ),
             discord.SelectOption(
-                label="3 ans", value="3", description="Afficher la tendance sur 3 ans"
+                label="Tendance sur 3 ans",
+                value="3",
+                description="Afficher la tendance sur 3 ans",
             ),
         ],
     )
@@ -654,23 +648,64 @@ class TrendView(discord.ui.View):
         # Update selected option
         self.set_selected_period(select.values[0])
 
-        years = int(select.values[0])
+        # Send image
+        await self.send_img(interaction)
+
+    def set_selected_period(self, option_value: str):
+        self.selected_period = option_value
+        for option in self.select_period.options:
+            option.default = option_value == option.value
+
+    @discord.ui.select(
+        placeholder="Changer la durée de moyennage",
+        options=[
+            discord.SelectOption(
+                label="Moyenne sur 14 jours",
+                value="14",
+                description="Moyenne glissante sur 14 jours",
+            ),
+            discord.SelectOption(
+                label="Moyenne sur 7 jours",
+                value="7",
+                description="Moyenne glissante sur 7 jours",
+            ),
+            discord.SelectOption(
+                label="Ne pas moyenner",
+                value="1",
+                description="Supprimer la moyenne glissante",
+            ),
+        ],
+    )
+    async def select_rolling(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        """Select rolling average days"""
+        # Update selected option
+        self.set_selected_rolling(select.values[0])
+
+        # Send image
+        await self.send_img(interaction)
+
+    def set_selected_rolling(self, option_value: str):
+        self.selected_rolling = option_value
+        for option in self.select_rolling.options:
+            option.default = option_value == option.value
+
+    async def send_img(self, interaction: discord.Interaction | None = None):
+        """Generate graph image and send it"""
+        df = self.df.copy(deep=True)
+
+        # Rolling average
+        df["messages"] = df.rolling(int(self.selected_rolling)).mean()
+
+        # Remove NaN values
+        df = df.dropna()
+
+        # Period
+        years = int(self.selected_period)
         if years:
-            df = self.df.tail(365 * years)
-        else:
-            df = self.df
+            df = df.tail(365 * years)
 
-        # Envoyer image
-        img = self.get_img(df)
-        logging.info("Sending image to client...")
-        await interaction.response.edit_message(
-            attachments=[discord.File(io.BytesIO(img), "abeille.png")],
-            view=self,
-        )
-        logging.info("Image sent to client.")
-
-    def get_img(self, df: pandas.DataFrame):
-        """Get figure"""
         fig = px.area(
             df,
             # x="date",
@@ -681,13 +716,37 @@ class TrendView(discord.ui.View):
             title=self.title,
             labels={"index": "", "messages": ""},
         )
-        fig.update_layout(yaxis_tickformat=".2%")
+        current_timestamp = datetime.now().strftime("%d/%m/%Y")
+        bot_user = self.bot.user
+        bot_name = f"{bot_user.name}#{bot_user.discriminator}"
+        fig.update_layout(
+            yaxis_tickformat=".2%",
+            annotations=[
+                dict(
+                    text=f"Généré le {current_timestamp} par {bot_name}.",
+                    xref="paper",
+                    yref="paper",
+                    x=1,
+                    y=-0.15,
+                    xanchor="right",
+                    yanchor="bottom",
+                    showarrow=False,
+                    font=dict(size=10),
+                )
+            ],
+        )
         logging.info("Data processed and graph created. Exporting to image...")
-        return fig.to_image(format="png", scale=2)
+        img = fig.to_image(format="png", scale=2)
 
-    def set_selected_period(self, option_value: str):
-        for option in self.select_period.options:
-            option.default = option_value == option.value
+        logging.info("Sending image to client...")
+        file = discord.File(io.BytesIO(img), "abeille.png")
+        if interaction is None:
+            await self.initial_interaction.followup.send(file=file, view=self)
+        else:
+            await interaction.response.edit_message(attachments=[file], view=self)
+            self.message = await self.initial_interaction.original_response()
+
+        logging.info("Image sent to client.")
 
 
 async def setup(bot):
