@@ -15,9 +15,9 @@ Abeille is not (yet) a public Discord bot. You can run your own instance of Abei
 
 ### Setting up
 1. Create a folder.
-2. Copy the [compose.yaml.template](compose.yaml.template) and [.env.template](.env.template) files into the folder.
-3. Rename them to `compose.yaml` and `.env` respectively.
-4. Configure `.env` file.
+2. Copy [compose.yaml.template](compose.yaml.template) into the folder.
+3. Rename it to `compose.yaml`.
+4. Configure `.compose.yaml` file.
 
 ### Run
 
@@ -38,4 +38,6 @@ docker logs abeille
 ## Develop
 
 1. Clone project.
-2. Run `docker compose up --watch --build`.
+2. Copy [compose.yaml.dev.template](compose.yaml.dev.template) into the folder.
+3. Rename it to `compose.yaml`.
+4. Run `docker compose up --watch --build`.

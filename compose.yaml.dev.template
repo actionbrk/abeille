@@ -1,7 +1,9 @@
+# For development
+
 services:
   server:
-    image: actionbrk/abeille
-    container_name: abeille
+    build:
+      context: .
     environment:
       - DISCORD_TOKEN=[DISCORD_TOKEN]
       - HASHNAME=[HASHNAME]
@@ -9,5 +11,13 @@ services:
       - ITER=[ITER]
     volumes:
       - abeille-data:/db
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .mypy_cache
+            - .vscode
 volumes:
   abeille-data:
