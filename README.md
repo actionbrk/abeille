@@ -1,3 +1,5 @@
+!(Docker build)[https://github.com/actionbrk/abeille/actions/workflows/docker-image.yml/badge.svg]
+
 # abeille
 Abeille is a Discord bot providing statistics and insights for guilds. It maintains a database with the messages from each connected guild, in order to perform efficient and various search operations (since Discord does not provide any API to perform search operations).
 
