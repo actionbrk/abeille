@@ -124,7 +124,6 @@ class History(commands.Cog):
                         )
 
             # Clean not found channels
-            # Does not delete channel with missing permissions
             logging.info("Cleaning known but unavailable channels...")
             with db.bind_ctx([Message]):
                 for known_channel_id in Message.select(Message.channel_id).distinct():
@@ -140,7 +139,7 @@ class History(commands.Cog):
                     if not is_channel_found:
                         clean_this_channel = True
                         logging.info(
-                            "Channel [%d] is not available. Delete all messages...",
+                            "Channel [%d] is not available.",
                             known_channel_id.channel_id,
                         )
                     # Check if channel is not allowed for Abeille (missing permissions) or other problems
