@@ -744,7 +744,8 @@ class TrendView(discord.ui.View):
             await self.initial_interaction.followup.send(file=file, view=self)
         else:
             await interaction.response.edit_message(attachments=[file], view=self)
-            self.message = await self.initial_interaction.original_response()
+            
+        self.message = await self.initial_interaction.original_response()
 
         logging.info("Image sent to client.")
 
