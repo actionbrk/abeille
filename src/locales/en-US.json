@@ -1,0 +1,18 @@
+{
+  "commands": {
+    "ping": {
+      "name": "ping",
+      "description": "Ping the bot to check if it is alive!"
+    },
+    "trend": {
+      "name": "trend",
+      "description": "Draw the trend of an expression.",
+      "options": {
+        "term": {
+          "name": "term",
+          "description": "The word or expression to search for."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "abeillets",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/abeille.ts",
+    "dev": "bun run --watch src/abeille.ts",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@types/bun": "latest",
+    "eslint": "^9.24.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.29.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.8",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-node-canvas": "^5.0.0",
+    "date-fns": "^4.1.0",
+    "discord.js": "^14.18.0",
+    "winston": "^3.17.0"
+  }
+}
