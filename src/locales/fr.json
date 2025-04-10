@@ -12,6 +12,25 @@
           "name": "terme",
           "description": "Le mot ou l'expression à rechercher."
         }
+      },
+      "responses": {
+        "graphTitle": "Tendances de '{term}'",
+        "graphSubTitle": "Sur {serverName}",
+        "graphFooter": "Généré le {date} par {botName}",
+        "sinceTheBeginning": "Depuis le début",
+        "sinceTheBeginningDescription": "Afficher la tendance depuis le début du serveur.",
+        "forOneYear": "Tendance sur 1 an",
+        "forOneYearDescription": "Afficher la tendance sur 1 an.",
+        "forTwoYears": "Tendance sur 2 ans",
+        "forTwoYearsDescription": "Afficher la tendance sur 2 ans.",
+        "forThreeYears": "Tendance sur 3 ans",
+        "forThreeYearsDescription": "Afficher la tendance sur 3 ans.",
+        "rolling14Days": "Moyenne sur 14 jours",
+        "rolling14DaysDescription": "Moyenne glissante sur 14 jours",
+        "rolling7Days": "Moyenne sur 7 jours",
+        "rolling7DaysDescription": "Moyenne glissante sur 7 jours",
+        "noRolling": "Pas de moyenne",
+        "noRollingDescription": "Supprimer la moyenne glissante"
       }
     }
   }

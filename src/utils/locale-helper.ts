@@ -7,6 +7,7 @@ export type TranslationsMap = {
   localizedNames: LocalizationMap;
   localizedDescriptions: LocalizationMap;
   options?: { [optionName: string]: { localizedNames: LocalizationMap; localizedDescriptions: LocalizationMap } };
+  responses?: { [responseName: string]: Record<string, string> };
 };
 
 export class LocaleHelper {
@@ -47,6 +48,13 @@ export class LocaleHelper {
               localizedNames: { [localeKey]: option.name },
               localizedDescriptions: { [localeKey]: option.description },
             };
+          });
+        }
+        if (command.responses) {
+          result.responses = result.responses || {};
+          Object.entries(command.responses).forEach(([responseName, response]) => {
+            result.responses![responseName] ??= {};
+            result.responses![responseName][localeKey] = response;
           });
         }
       } else {

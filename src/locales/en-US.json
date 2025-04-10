@@ -12,6 +12,25 @@
           "name": "term",
           "description": "The word or expression to search for."
         }
+      },
+      "responses": {
+        "graphTitle": "Trends for '{term}'",
+        "graphSubTitle": "On {serverName}",
+        "graphFooter": "Generated on {date} by {botName}",
+        "sinceTheBeginning": "Since the beginning",
+        "sinceTheBeginningDescription": "Show the trend since the server's inception.",
+        "forOneYear": "Trend for 1 year",
+        "forOneYearDescription": "Show the trend for 1 year.",
+        "forTwoYears": "Trend for 2 years",
+        "forTwoYearsDescription": "Show the trend for 2 years.",
+        "forThreeYears": "Trend for 3 years",
+        "forThreeYearsDescription": "Show the trend for 3 years.",
+        "rolling14Days": "Average over 14 days",
+        "rolling14DaysDescription": "Sliding average over 14 days",
+        "rolling7Days": "Average over 7 days",
+        "rolling7DaysDescription": "Sliding average over 7 days",
+        "noRolling": "No rolling average",
+        "noRollingDescription": "Remove the sliding average"
       }
     }
   }

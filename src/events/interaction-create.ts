@@ -7,6 +7,8 @@ const interactionCreate: BeeEvent = {
   async execute(interaction: Interaction) {
     if (!interaction.isChatInputCommand()) return;
 
+    performance.mark("interactionCreateStart");
+
     const command = interaction.client.commands?.get(interaction.commandName);
 
     if (!command) {
@@ -30,6 +32,17 @@ const interactionCreate: BeeEvent = {
         });
       }
     }
+
+    performance.mark("interactionCreateEnd");
+    performance.measure("interactionCreate", "interactionCreateStart", "interactionCreateEnd");
+    logger.info(
+      "Handling interaction %s in %i ms",
+      interaction.commandName,
+      performance.getEntriesByName("interactionCreate")[0]?.duration ?? 0
+    );
+    performance.clearMarks();
+    performance.clearMeasures();
+    performance.clearResourceTimings();
   },
 };
 

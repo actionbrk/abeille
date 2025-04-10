@@ -14,6 +14,8 @@ It depends on :
 - [winston](https://github.com/winstonjs/winston)
 - [date-fns](https://github.com/date-fns/date-fns)
 - [chartjs-adapter-date-fns](https://github.com/chartjs/chartjs-adapter-date-fns)
+- [nodejs-polars](https://github.com/pola-rs/nodejs-polars)
+- [sharp](https://github.com/lovell/sharp)
 
 ## Features
 

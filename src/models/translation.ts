@@ -4,6 +4,7 @@ export interface Translation {
       name: string;
       description: string;
       options?: { [optionName: string]: { name: string; description: string } };
+      responses?: Record<string, string>;
     };
   };
 }
