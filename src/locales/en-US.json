@@ -32,6 +32,24 @@
         "noRolling": "No rolling average",
         "noRollingDescription": "Remove the sliding average"
       }
+    },
+    "rank": {
+      "name": "rank",
+      "description": "Display the ranking of users on the server.",
+      "options": {
+        "expression": {
+          "name": "expression",
+          "description": "Enter a word or phrase."
+        }
+      },
+      "responses": {
+        "rankFound": "`{number}` members have already used the expression *{expression}*",
+        "rankNone": "The expression *{expression}* has never been used on this server.",
+        "neverUseExpression": "Have never used this expression",
+        "unregisteredUser": "Unregistered user",
+        "displayMyRank": "Display my rank",
+        "totalExpressionUses": "Expression {expression} has been used {count} times"
+      }
     }
   }
 }

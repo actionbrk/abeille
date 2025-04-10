@@ -30,8 +30,18 @@ export class HashHelper {
     logger.info(`Hash salt: ${this.salt}`);
   }
 
+  // This cache consumes nearly 350 bytes per entry
+  // and is used to store the hash of the discord users id
+  // It's ok to use a cache of 1000 entries
+  private static cache = new Map<string, string>();
+
   static computeHash(input: string): string {
+    if (this.cache.has(input)) {
+      return this.cache.get(input)!;
+    }
+
     const hash = crypto.pbkdf2Sync(input, this.salt, this.iter, 64, this.hashAlgorithm).toString("hex");
+    this.cache.set(input, hash);
 
     return hash;
   }

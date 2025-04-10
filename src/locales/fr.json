@@ -32,6 +32,24 @@
         "noRolling": "Pas de moyenne",
         "noRollingDescription": "Supprimer la moyenne glissante"
       }
+    },
+    "rank": {
+      "name": "rank",
+      "description": "Afficher le classement des utilisateurs sur le serveur.",
+      "options": {
+        "expression": {
+          "name": "expression",
+          "description": "Saisissez un mot ou une phrase."
+        }
+      },
+      "responses": {
+        "rankFound": "`{number}` membres membres ont déjà utilisé l'expression *{expression}*",
+        "rankNone": "L'expression *{expression}* n'a jamais été employée sur ce serveur.",
+        "neverUseExpression": "N'ont jamais utilisé cette expression",
+        "unregisteredUser": "Utilisateur non enregistré",
+        "displayMyRank": "Afficher mon classement",
+        "totalExpressionUses": "L'expression {expression} a été utilisée {count} fois"
+      }
     }
   }
 }

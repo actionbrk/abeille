@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import type { Message } from "../models/database/message";
 import { TrendResult } from "../models/database/trend-result";
+import { RankResult } from "../models/database/rank-result";
 
 export function saveMessage(guildId: string, message: Message) {
   const db = getDatabaseForGuild(guildId);
@@ -46,13 +47,22 @@ export function getTrend(
   const db = getDatabaseForGuild(guildId);
   const statement = db
     .query(
-      `SELECT DATE(message.timestamp) as date, COUNT(messageindex.rowid)/CAST (messageday.count AS REAL) as messages
-FROM messageindex
-JOIN message ON messageindex.rowid = message.message_id
-JOIN messageday ON DATE(message.timestamp)=messageday.date
-WHERE messageindex MATCH $term
-GROUP BY DATE(message.timestamp)
-ORDER BY DATE(message.timestamp);`
+      `WITH matched AS (
+    SELECT rowid
+    FROM messageindex
+    WHERE messageindex MATCH $term
+),
+filtered_messages AS (
+    SELECT m.*, DATE(m.timestamp) AS message_date
+    FROM message m
+    JOIN matched ON m.message_id = matched.rowid
+)
+SELECT fm.message_date AS date,
+       COUNT(*) / CAST(md.count AS REAL) AS messages
+FROM filtered_messages fm
+JOIN messageday md ON fm.message_date = md.date
+GROUP BY fm.message_date
+ORDER BY fm.message_date;`
     )
     .as(TrendResult);
 
@@ -68,6 +78,29 @@ ORDER BY DATE(message.timestamp);`
     guildFirstMessageDate: guildFirstMessageDate !== null ? new Date(Date.parse(guildFirstMessageDate.date)) : null,
     guildLastMessageDate: guildLastMessageDate !== null ? new Date(Date.parse(guildLastMessageDate.date)) : null,
   };
+}
+
+export function getRank(guildId: string, expression: string): RankResult[] {
+  const db = getDatabaseForGuild(guildId);
+
+  const statement = db
+    .query(
+      `WITH matched AS (
+    SELECT rowid
+    FROM messageindex
+    WHERE messageindex MATCH $expression
+)
+SELECT IF (i.real_author_id IS NULL, m.author_id, CAST(i.real_author_id AS TEXT)) as author_id, COUNT(*) AS count
+FROM matched
+JOIN message AS m ON m.message_id = matched.rowid
+LEFT JOIN "identity" i ON m.author_id = i.author_id
+GROUP BY m.author_id
+ORDER BY count DESC;`
+    )
+    .as(RankResult);
+
+  const result = statement.all({ $expression: expression });
+  return result;
 }
 
 const existingDatabases = new Set<string>();
