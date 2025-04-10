@@ -99,7 +99,7 @@ ORDER BY count DESC;`
     )
     .as(RankResult);
 
-  const result = statement.all({ $expression: expression });
+  const result = statement.all({ $expression: `"${expression}"` });
   return result;
 }
 
