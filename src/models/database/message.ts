@@ -1,10 +1,10 @@
-import { Message as DiscordMessage } from "discord.js";
+import type { Message as DiscordMessage } from "discord.js";
 import { HashHelper } from "../../utils/hash-helper";
 
 export interface Message {
-  message_id: number;
+  message_id: string;
   author_id: string;
-  channel_id: number;
+  channel_id: string;
   timestamp: Date;
   content: string | null;
   attachment_url: string | null;
@@ -12,11 +12,11 @@ export interface Message {
 
 export function fromDiscordMessage(message: DiscordMessage): Message {
   return {
-    message_id: parseInt(message.id),
-    channel_id: parseInt(message.channelId),
+    message_id: message.id,
     author_id: HashHelper.computeHash(message.author.id),
-    content: message.content,
-    timestamp: new Date(message.createdTimestamp),
-    attachment_url: message.attachments.size > 0 ? message.attachments.first()!.url : null,
+    channel_id: message.channelId,
+    timestamp: message.createdAt,
+    content: message.content || null,
+    attachment_url: message.attachments.first()?.url || null,
   };
 }

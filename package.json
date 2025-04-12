@@ -1,8 +1,11 @@
 {
-  "name": "abeillets",
-  "module": "index.ts",
+  "name": "abeille",
+  "version": "1.0.0",
+  "description": "A Discord bot for tracking and analyzing message trends",
+  "main": "src/abeille.ts",
   "type": "module",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "start": "bun run src/abeille.ts",
     "dev": "bun run src/abeille.ts",
@@ -20,9 +23,11 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@zip.js/zip.js": "^2.7.60",
     "chart.js": "^4.4.8",
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-node-canvas": "^5.0.0",
+    "csv-stringify": "^6.5.2",
     "date-fns": "^4.1.0",
     "discord.js": "^14.18.0",
     "nodejs-polars": "^0.18.0",

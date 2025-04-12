@@ -1,5 +1,7 @@
-export interface BeeEvent {
-  name: string;
-  execute(...args: unknown[]): Promise<void>;
-  once?: boolean;
+import type { ClientEvents } from "discord.js";
+
+export interface BeeEvent<K extends keyof ClientEvents = never> {
+  name: K;
+  once: boolean;
+  execute(...args: ClientEvents[K]): Promise<void>;
 }

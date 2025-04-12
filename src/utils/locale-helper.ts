@@ -6,7 +6,20 @@ import logger from "../logger";
 export type TranslationsMap = {
   localizedNames: LocalizationMap;
   localizedDescriptions: LocalizationMap;
-  options?: { [optionName: string]: { localizedNames: LocalizationMap; localizedDescriptions: LocalizationMap } };
+  options?: {
+    [optionName: string]: {
+      localizedNames: LocalizationMap;
+      localizedDescriptions: LocalizationMap;
+      choices?: {
+        [choiceName: string]: {
+          name: string;
+          description: string;
+          localizedNames: LocalizationMap;
+          localizedDescriptions: LocalizationMap;
+        };
+      };
+    };
+  };
   responses?: { [responseName: string]: Record<string, string> };
 };
 
@@ -48,6 +61,18 @@ export class LocaleHelper {
               localizedNames: { [localeKey]: option.name },
               localizedDescriptions: { [localeKey]: option.description },
             };
+
+            if (option.choices) {
+              result.options![optionName].choices = {};
+              Object.entries(option.choices).forEach(([choiceName, choice]) => {
+                result.options![optionName]!.choices![choiceName] = {
+                  name: choice.name,
+                  description: choice.description,
+                  localizedNames: { [localeKey]: choice.name },
+                  localizedDescriptions: { [localeKey]: choice.description },
+                };
+              });
+            }
           });
         }
         if (command.responses) {

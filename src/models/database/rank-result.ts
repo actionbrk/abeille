@@ -1,4 +1,4 @@
-export class RankResult {
-  author_id = "";
-  count = 0;
+export interface RankResult {
+  author_id: string;
+  count: number;
 }

@@ -1,9 +1,10 @@
-import { Events, MessageFlags, type Interaction } from "discord.js";
+import { Events, MessageFlags, type Interaction, type InteractionReplyOptions } from "discord.js";
 import type { BeeEvent } from "../models/events";
 import logger from "../logger";
 
-const interactionCreate: BeeEvent = {
+const InteractionCreateEvent: BeeEvent<Events.InteractionCreate> = {
   name: Events.InteractionCreate,
+  once: false,
   async execute(interaction: Interaction) {
     if (!interaction.isChatInputCommand()) return;
 
@@ -12,7 +13,11 @@ const interactionCreate: BeeEvent = {
     const command = interaction.client.commands?.get(interaction.commandName);
 
     if (!command) {
-      logger.error("No command matching %s was found.", interaction.commandName);
+      logger.error("Command %s not found.", interaction.commandName);
+      await interaction.reply({
+        content: "This command is not implemented yet.",
+        flags: [MessageFlags.Ephemeral],
+      });
       return;
     }
 
@@ -20,16 +25,16 @@ const interactionCreate: BeeEvent = {
       await command.execute(interaction);
     } catch (error) {
       logger.error(error);
+
+      const message: InteractionReplyOptions = {
+        content: "There was an error while executing this command!",
+        flags: MessageFlags.Ephemeral,
+      };
+
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({
-          content: "There was an error while executing this command!",
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.followUp(message);
       } else {
-        await interaction.reply({
-          content: "There was an error while executing this command!",
-          flags: MessageFlags.Ephemeral,
-        });
+        await interaction.reply(message);
       }
     }
 
@@ -46,4 +51,4 @@ const interactionCreate: BeeEvent = {
   },
 };
 
-export default interactionCreate;
+export default InteractionCreateEvent;

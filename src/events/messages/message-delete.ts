@@ -1,17 +1,21 @@
-import { Events, Message } from "discord.js";
-import logger from "../../logger";
+import { Events, type Message, type OmitPartialGroupDMChannel, type PartialMessage } from "discord.js";
 import type { BeeEvent } from "../../models/events";
 import { deleteMessage } from "../../database/bee-database";
+import logger from "../../logger";
 
-const MessageDeleteEvent: BeeEvent = {
+const MessageDeleteEvent: BeeEvent<Events.MessageDelete> = {
   name: Events.MessageDelete,
-  async execute(message: Message) {
+  once: false,
+  async execute(message: OmitPartialGroupDMChannel<Message<boolean> | PartialMessage>) {
     if (message.guildId === null) return;
-    if (message.author.bot) return;
+    if (message.author?.bot) return;
 
-    logger.debug("Message from %s delete: %s", message.author.id, message.content);
-
-    deleteMessage(message.guildId, parseInt(message.id));
+    try {
+      deleteMessage(message.guild!.id, message.id);
+      logger.debug("Deleted message %s from channel %s", message.id, message.channelId);
+    } catch (error) {
+      logger.error("Error deleting message %s: %o", message.id, error);
+    }
   },
 };
 

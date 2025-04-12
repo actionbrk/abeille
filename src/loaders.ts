@@ -5,6 +5,39 @@ import { Client, Collection, Locale } from "discord.js";
 import type { BeeEvent } from "./models/events";
 import type { Command } from "./models/command";
 import type { Translation } from "./models/translation";
+import fsPromises from "fs/promises";
+
+async function loadFileAsync(filePath: string): Promise<Command | null> {
+  try {
+    const command = (await import(filePath)).default as Command;
+    return command;
+  } catch (error) {
+    logger.error("Error loading command %s: %o", filePath, error);
+    return null;
+  }
+}
+
+async function loadDirectoryAsync(dirPath: string): Promise<Command[]> {
+  const files = await fsPromises.readdir(dirPath);
+  const commands: Command[] = [];
+
+  for (const file of files) {
+    const filePath = path.join(dirPath, file);
+    const stat = await fsPromises.stat(filePath);
+
+    if (stat.isDirectory()) {
+      const subCommands = await loadDirectoryAsync(filePath);
+      commands.push(...subCommands);
+    } else if (file.endsWith(".ts") || file.endsWith(".js")) {
+      const command = await loadFileAsync(filePath);
+      if (command) {
+        commands.push(command);
+      }
+    }
+  }
+
+  return commands;
+}
 
 export async function loadEventsAsync(client: Client) {
   const eventsPath = path.join(__dirname, "events");
@@ -29,20 +62,16 @@ export async function loadEventsAsync(client: Client) {
 }
 
 export async function loadCommandsAsync(): Promise<Collection<string, Command>> {
-  const commandsPath = path.join(__dirname, "commands");
-  const commandFiles = getTsFilesRecursive(commandsPath);
-
   const commands = new Collection<string, Command>();
+  const commandsPath = path.join(__dirname, "commands");
+  const loadedCommands = await loadDirectoryAsync(commandsPath);
 
-  for (const file of commandFiles) {
-    const defaultExport = await import(file);
-
-    if (defaultExport.default) {
-      const command: Command = defaultExport.default;
-      logger.info("Loading command: %s", command.data.name);
+  for (const command of loadedCommands) {
+    if ("data" in command && "execute" in command) {
       commands.set(command.data.name, command);
+      logger.debug("Loaded command: %s", command.data.name);
     } else {
-      logger.error("Command file %s does not have a default export.", file);
+      logger.warn("Command at %s is missing required properties.", command);
     }
   }
 

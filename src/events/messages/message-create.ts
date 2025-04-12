@@ -1,20 +1,23 @@
-import { Events, Message } from "discord.js";
-import logger from "../../logger";
+import { Events, type Message } from "discord.js";
 import type { BeeEvent } from "../../models/events";
-import { fromDiscordMessage } from "../../models/database/message";
 import { saveMessage } from "../../database/bee-database";
+import { fromDiscordMessage } from "../../models/database/message";
+import logger from "../../logger";
 
-const MessageCreateEvent: BeeEvent = {
+const MessageCreateEvent: BeeEvent<Events.MessageCreate> = {
   name: Events.MessageCreate,
+  once: false,
   async execute(message: Message) {
     if (message.guildId === null) return;
     if (message.author.bot) return;
 
-    logger.debug("Message from %s created: %s", message.author.id, message.content);
-
-    const beeMessage = fromDiscordMessage(message);
-
-    saveMessage(message.guildId, beeMessage);
+    try {
+      const dbMessage = fromDiscordMessage(message);
+      saveMessage(message.guild!.id, dbMessage);
+      logger.debug("Saved message %s from channel %s", message.id, message.channelId);
+    } catch (error) {
+      logger.error("Error saving message %s: %o", message.id, error);
+    }
   },
 };
 

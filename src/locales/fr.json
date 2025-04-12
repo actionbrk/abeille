@@ -2,11 +2,11 @@
   "commands": {
     "ping": {
       "name": "ping",
-      "description": "Ping le bot pour vérifier s'il est vivant !"
+      "description": "Vérifiez si le bot est opérationnel !"
     },
     "trend": {
       "name": "trend",
-      "description": "Dessiner la tendance d'une expression.",
+      "description": "Visualisez la tendance d'une expression spécifique.",
       "options": {
         "term": {
           "name": "terme",
@@ -35,20 +35,215 @@
     },
     "rank": {
       "name": "rank",
-      "description": "Afficher le classement des utilisateurs sur le serveur.",
+      "description": "Consultez le classement des utilisateurs sur ce serveur.",
       "options": {
         "expression": {
           "name": "expression",
-          "description": "Saisissez un mot ou une phrase."
+          "description": "Entrez un mot ou une phrase."
         }
       },
       "responses": {
         "rankFound": "`{number}` membres ont déjà utilisé l'expression *{expression}*",
-        "rankNone": "L'expression *{expression}* n'a jamais été employée sur ce serveur.",
+        "rankNone": "L'expression *{expression}* n'a jamais été utilisée sur ce serveur.",
         "neverUseExpression": "N'ont jamais utilisé cette expression",
         "unregisteredUser": "Utilisateur non enregistré",
-        "displayMyRank": "Afficher mon classement",
+        "displayMyRank": "Afficher mon rang",
         "totalExpressionUses": "L'expression {expression} a été utilisée {count} fois"
+      }
+    },
+    "compare": {
+      "name": "compare",
+      "description": "Comparez les tendances d'utilisation entre deux expressions.",
+      "options": {
+        "expression1": {
+          "name": "expression1",
+          "description": "Première expression à comparer."
+        },
+        "expression2": {
+          "name": "expression2",
+          "description": "Deuxième expression à comparer."
+        },
+        "period": {
+          "name": "periode",
+          "description": "Période de comparaison.",
+          "choices": {
+            "sixMonths": {
+              "name": "6 mois",
+              "description": "Comparer sur les 6 derniers mois"
+            },
+            "oneYear": {
+              "name": "1 an",
+              "description": "Comparer sur la dernière année"
+            },
+            "twoYears": {
+              "name": "2 ans",
+              "description": "Comparer sur les 2 dernières années"
+            },
+            "threeYears": {
+              "name": "3 ans",
+              "description": "Comparer sur les 3 dernières années"
+            },
+            "beginning": {
+              "name": "Depuis le début",
+              "description": "Comparer depuis la création du serveur"
+            }
+          }
+        }
+      },
+      "responses": {
+        "graphTitle": "'{expression1}' comparé à '{expression2}'",
+        "graphSubTitle": "Sur {serverName}",
+        "graphFooter": "Généré le {date} par {botName}"
+      }
+    },
+    "random": {
+      "name": "random",
+      "description": "Obtenez un message aléatoire provenant d'un salon.",
+      "options": {
+        "channel": {
+          "name": "salon",
+          "description": "Salon où chercher le message."
+        },
+        "media": {
+          "name": "media",
+          "description": "Uniquement les messages avec médias."
+        },
+        "length": {
+          "name": "longueur",
+          "description": "Longueur minimale du message."
+        },
+        "member": {
+          "name": "membre",
+          "description": "Filtrer par auteur du message."
+        }
+      },
+      "responses": {
+        "nsfwError": "Impossible d'accéder à des messages d'un salon NSFW depuis un salon SFW.",
+        "noMessageFound": "Aucun message ne correspond à vos critères.",
+        "replyContext": "Réponse à",
+        "attachments": "Fichiers joints",
+        "goToMessage": "Voir le message",
+        "again": "Essayer un autre",
+        "notYourButton": "Seul l'utilisateur ayant initié la commande peut interagir avec ces boutons.",
+        "error": "Une erreur est survenue lors de la récupération du message aléatoire."
+      }
+    },
+    "register": {
+      "name": "register",
+      "description": "Permettez à Abeille de sauvegarder et d'afficher votre nom d'utilisateur dans les classements.",
+      "responses": {
+        "success": "Votre nom d'utilisateur est maintenant visible dans les classements. Utilisez /unregister pour le masquer à nouveau."
+      }
+    },
+    "unregister": {
+      "name": "unregister",
+      "description": "Supprimez votre nom d'utilisateur des données stockées par Abeille.",
+      "responses": {
+        "success": "Votre nom d'utilisateur a été retiré des classements. Utilisez /register pour le réactiver."
+      }
+    },
+    "export": {
+      "name": "export",
+      "description": "Téléchargez vos données personnelles collectées par Abeille.",
+      "responses": {
+        "noData": "Aucune donnée personnelle trouvée pour vous sur ce serveur.",
+        "dmIntro": "Voici vos données collectées par Abeille. Utilisez /delete <message_id> pour supprimer des messages spécifiques.",
+        "success": "Vos données ont été envoyées en message privé."
+      }
+    },
+    "delete": {
+      "name": "delete",
+      "description": "Effacez un message spécifique de la base de données d'Abeille.",
+      "options": {
+        "message_id": {
+          "name": "message_id",
+          "description": "ID du message à supprimer."
+        }
+      },
+      "responses": {
+        "invalidId": "L'ID fourni est invalide. Veuillez entrer un ID de message correct.",
+        "success": "Le message a été supprimé avec succès de la base de données.",
+        "notFound": "Message introuvable ou vous n'avez pas les droits nécessaires pour le supprimer.",
+        "error": "Une erreur est survenue lors de la suppression du message."
+      }
+    },
+    "channels": {
+      "name": "channels",
+      "description": "Affichez tous les salons suivis et le nombre de messages associés.",
+      "responses": {
+        "title": "Statistiques des salons suivis",
+        "footer": "Total : {total} messages dans {channels} salons suivis"
+      }
+    },
+    "purge": {
+      "name": "purge",
+      "description": "Supprimez les messages effacés de la base de données.",
+      "responses": {
+        "scanning": "Recherche des messages supprimés en cours...",
+        "progress": "{deleted} messages supprimés trouvés sur {checked} messages analysés...",
+        "success": "{count} messages supprimés ont été retirés de la base de données avec succès.",
+        "noDeleted": "Aucun message supprimé n'a été trouvé dans la base de données."
+      }
+    },
+    "save": {
+      "name": "save",
+      "description": "Effectuez une sauvegarde complète de tous les messages.",
+      "responses": {
+        "scanning": "Analyse des messages dans les salons en cours...",
+        "progress": "{saved} messages sauvegardés dans {channels} salons...",
+        "success": "{messages} messages ont été sauvegardés avec succès dans {channels} salons."
+      }
+    },
+    "savechannel": {
+      "name": "savechannel",
+      "description": "Sauvegardez les messages d'un salon spécifique.",
+      "options": {
+        "channel": {
+          "name": "salon",
+          "description": "Salon dont il faut sauvegarder les messages."
+        }
+      },
+      "responses": {
+        "invalidChannel": "Seuls les salons textuels peuvent être sauvegardés.",
+        "scanning": "Analyse des messages dans #{channel} en cours...",
+        "progress": "{saved} messages sauvegardés dans #{channel}...",
+        "success": "{messages} messages ont été sauvegardés avec succès dans #{channel}.",
+        "error": "Une erreur est survenue lors de la sauvegarde des messages dans #{channel}."
+      }
+    },
+    "logging": {
+      "name": "logging",
+      "description": "Réglez le niveau de journalisation du bot.",
+      "options": {
+        "level": {
+          "name": "niveau",
+          "description": "Niveau de journalisation à définir."
+        }
+      },
+      "responses": {
+        "notOwner": "Seul le propriétaire du bot peut exécuter cette commande.",
+        "success": "Le niveau de journalisation a été défini sur {level} avec succès.",
+        "error": "Une erreur est survenue lors de la modification du niveau de journalisation."
+      }
+    },
+    "db": {
+      "name": "db",
+      "description": "Exécutez des commandes de maintenance pour la base de données.",
+      "options": {
+        "optimize": {
+          "name": "optimize",
+          "description": "Optimiser les index de la base de données."
+        },
+        "rebuild": {
+          "name": "rebuild",
+          "description": "Reconstruire les index de la base de données."
+        }
+      },
+      "responses": {
+        "notOwner": "Seul le propriétaire du bot peut exécuter cette commande.",
+        "optimizeSuccess": "La base de données a été optimisée avec succès en {duration}ms.",
+        "rebuildSuccess": "Les index de la base de données ont été reconstruits avec succès en {duration}ms.",
+        "error": "Une erreur est survenue lors de l'exécution de la commande de maintenance de la base de données."
       }
     }
   }

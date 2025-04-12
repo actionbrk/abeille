@@ -50,6 +50,201 @@
         "displayMyRank": "Display my rank",
         "totalExpressionUses": "Expression {expression} has been used {count} times"
       }
+    },
+    "compare": {
+      "name": "compare",
+      "description": "Compare usage trends between two expressions.",
+      "options": {
+        "expression1": {
+          "name": "expression1",
+          "description": "First expression to compare."
+        },
+        "expression2": {
+          "name": "expression2",
+          "description": "Second expression to compare."
+        },
+        "period": {
+          "name": "period",
+          "description": "Time period for comparison.",
+          "choices": {
+            "sixMonths": {
+              "name": "6 months",
+              "description": "Compare over the last 6 months"
+            },
+            "oneYear": {
+              "name": "1 year",
+              "description": "Compare over the last year"
+            },
+            "twoYears": {
+              "name": "2 years",
+              "description": "Compare over the last 2 years"
+            },
+            "threeYears": {
+              "name": "3 years",
+              "description": "Compare over the last 3 years"
+            },
+            "beginning": {
+              "name": "Since the beginning",
+              "description": "Compare since the server's inception"
+            }
+          }
+        }
+      },
+      "responses": {
+        "graphTitle": "'{expression1}' vs '{expression2}'",
+        "graphSubTitle": "On {serverName}",
+        "graphFooter": "Generated on {date} by {botName}"
+      }
+    },
+    "random": {
+      "name": "random",
+      "description": "Get a random message from the channel.",
+      "options": {
+        "channel": {
+          "name": "channel",
+          "description": "Channel to get message from."
+        },
+        "media": {
+          "name": "media",
+          "description": "Only messages with media."
+        },
+        "length": {
+          "name": "length",
+          "description": "Minimum message length."
+        },
+        "member": {
+          "name": "member",
+          "description": "Filter by message author."
+        }
+      },
+      "responses": {
+        "nsfwError": "Cannot fetch messages from NSFW channels in a SFW channel.",
+        "noMessageFound": "No message found matching your criteria.",
+        "replyContext": "Replying to",
+        "attachments": "Attachments",
+        "goToMessage": "Go to message",
+        "again": "Another one",
+        "notYourButton": "Only the user who initiated the command can use these buttons.",
+        "error": "An error occurred while fetching the random message."
+      }
+    },
+    "register": {
+      "name": "register",
+      "description": "Allow Abeille to store and display your username in rankings.",
+      "responses": {
+        "success": "Your username will now be displayed in rankings. Use /unregister to remove it."
+      }
+    },
+    "unregister": {
+      "name": "unregister",
+      "description": "Remove your username from Abeille's storage.",
+      "responses": {
+        "success": "Your username has been removed from storage. Use /register to allow it again."
+      }
+    },
+    "export": {
+      "name": "export",
+      "description": "Download your personal data collected by Abeille.",
+      "responses": {
+        "noData": "No data found for you in this guild.",
+        "dmIntro": "Here are your messages collected by Abeille. You can use /delete <message_id> to remove specific messages.",
+        "success": "Your data has been sent to you via DM."
+      }
+    },
+    "delete": {
+      "name": "delete",
+      "description": "Delete a specific message from Abeille's database.",
+      "options": {
+        "message_id": {
+          "name": "message_id",
+          "description": "ID of the message to delete."
+        }
+      },
+      "responses": {
+        "invalidId": "Invalid message ID format. Please provide a valid message ID.",
+        "success": "Message has been deleted from Abeille's database.",
+        "notFound": "Message not found or you don't have permission to delete it.",
+        "error": "An error occurred while trying to delete the message."
+      }
+    },
+    "channels": {
+      "name": "channels",
+      "description": "List all tracked channels and their message counts.",
+      "responses": {
+        "title": "Channel Statistics",
+        "footer": "Total: {total} messages in {channels} channels"
+      }
+    },
+    "purge": {
+      "name": "purge",
+      "description": "Clean deleted messages from the database.",
+      "responses": {
+        "scanning": "Scanning channels for deleted messages...",
+        "progress": "Found {deleted} deleted messages in {checked} checked messages...",
+        "success": "Successfully removed {count} deleted messages from the database.",
+        "noDeleted": "No deleted messages found in the database."
+      }
+    },
+    "save": {
+      "name": "save",
+      "description": "Force a complete save of all messages.",
+      "responses": {
+        "scanning": "Scanning channels for messages...",
+        "progress": "Saved {saved} messages from {channels} channels...",
+        "success": "Successfully saved {messages} messages from {channels} channels."
+      }
+    },
+    "savechannel": {
+      "name": "savechannel",
+      "description": "Force save messages from a specific channel.",
+      "options": {
+        "channel": {
+          "name": "channel",
+          "description": "Channel to save messages from."
+        }
+      },
+      "responses": {
+        "invalidChannel": "Only text channels can be saved.",
+        "scanning": "Scanning messages from #{channel}...",
+        "progress": "Saved {saved} messages from #{channel}...",
+        "success": "Successfully saved {messages} messages from #{channel}.",
+        "error": "An error occurred while saving messages from #{channel}."
+      }
+    },
+    "logging": {
+      "name": "logging",
+      "description": "Configure logging level.",
+      "options": {
+        "level": {
+          "name": "level",
+          "description": "Logging level to set."
+        }
+      },
+      "responses": {
+        "notOwner": "Only the bot owner can use this command.",
+        "success": "Successfully set logging level to {level}.",
+        "error": "An error occurred while setting the logging level."
+      }
+    },
+    "db": {
+      "name": "db",
+      "description": "Database maintenance commands.",
+      "options": {
+        "optimize": {
+          "name": "optimize",
+          "description": "Optimize database indexes."
+        },
+        "rebuild": {
+          "name": "rebuild",
+          "description": "Rebuild database indexes."
+        }
+      },
+      "responses": {
+        "notOwner": "Only the bot owner can use this command.",
+        "optimizeSuccess": "Successfully optimized database in {duration}ms.",
+        "rebuildSuccess": "Successfully rebuilt database indexes in {duration}ms.",
+        "error": "An error occurred while executing the database command."
+      }
     }
   }
 }

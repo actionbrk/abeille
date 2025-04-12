@@ -1,4 +1,4 @@
-export class TrendResult {
-  date?: string;
-  messages?: number;
+export interface TrendResult {
+  date: string;
+  messages: number;
 }
