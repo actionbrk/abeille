@@ -3,6 +3,8 @@ import { loadEventsAsync } from "./loaders";
 import { LocaleHelper } from "./utils/locale-helper";
 import logger from "./logger";
 import { HashHelper } from "./utils/hash-helper";
+import path from "path";
+import fs from "fs";
 
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) {
@@ -27,6 +29,12 @@ async function main() {
 
     // Initialize hash helper
     HashHelper.initialize();
+
+    // Ensure db folder exists
+    const dbDir = path.resolve("./db");
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
 
     // Load event handlers
     await loadEventsAsync(client);
