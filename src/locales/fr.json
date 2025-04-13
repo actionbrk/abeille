@@ -188,6 +188,22 @@
     "save": {
       "name": "save",
       "description": "Effectuez une sauvegarde complète de tous les messages.",
+      "options": {
+        "since": {
+          "name": "since",
+          "description": "Sauvegardez les messages depuis une date spécifique.",
+          "choices": {
+            "oneDay": {
+              "name": "1 jour",
+              "description": "Sauvegardez les messages des dernières 24 heures."
+            },
+            "oneWeek": {
+              "name": "1 semaine",
+              "description": "Sauvegardez les messages des 7 derniers jours."
+            }
+          }
+        }
+      },
       "responses": {
         "scanning": "Analyse des messages dans les salons en cours...",
         "progress": "{saved} messages sauvegardés dans {channels} salons...",

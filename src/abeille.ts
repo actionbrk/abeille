@@ -5,6 +5,8 @@ import logger from "./logger";
 import { HashHelper } from "./utils/hash-helper";
 import path from "path";
 import fs from "fs";
+import { getDbFolder } from "./database/bee-database";
+import { cacheLastEntriesOfDatabases } from "./abeille-db-sync";
 
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) {
@@ -31,10 +33,13 @@ async function main() {
     HashHelper.initialize();
 
     // Ensure db folder exists
-    const dbDir = path.resolve("./db");
+    const dbFolder = getDbFolder();
+    const dbDir = path.resolve(dbFolder);
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
+
+    cacheLastEntriesOfDatabases();
 
     // Load event handlers
     await loadEventsAsync(client);

@@ -2,7 +2,7 @@ import { ChannelType, InteractionContextType, PermissionFlagsBits, SlashCommandB
 import type { Command } from "../../models/command";
 import { LocaleHelper } from "../../utils/locale-helper";
 import { initializeMessageDays, optimizeDatabase, saveChannelMessages } from "../../database/bee-database";
-import { fromDiscordMessage } from "../../models/database/message";
+import { fromDiscordMessage, messageHasContentOrUrl } from "../../models/database/message";
 import logger from "../../logger";
 
 const translations = LocaleHelper.getCommandTranslations("savechannel");
@@ -64,7 +64,10 @@ const SaveChannelCommand: Command = {
         }
 
         // Convert messages to our format
-        const validMessages = messages.filter((msg) => !msg.author.bot).map((msg) => fromDiscordMessage(msg));
+        const validMessages = messages
+          .filter((msg) => !msg.author.bot)
+          .map((msg) => fromDiscordMessage(msg))
+          .filter((msg) => messageHasContentOrUrl(msg));
 
         channelMessages.push(...validMessages);
 

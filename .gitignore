@@ -137,3 +137,7 @@ dist
 
 # db directory for local dev db
 db/
+
+# compose.yaml can contains secrets
+compose**.yaml
+compose**.yml

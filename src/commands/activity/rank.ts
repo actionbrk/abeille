@@ -5,6 +5,7 @@ import {
   EmbedBuilder,
   InteractionContextType,
   SlashCommandBuilder,
+  userMention,
 } from "discord.js";
 import type { Command } from "../../models/command";
 import { LocaleHelper } from "../../utils/locale-helper";
@@ -120,12 +121,12 @@ async function computeRankForExpressionAsync(
         if (result.author_id.length === 128) {
           const realUserId = hashMapOfUserId.get(result.author_id);
           if (realUserId) {
-            userName = `<@${realUserId}>`;
+            userName = userMention(realUserId);
           } else {
             userName = translations.responses?.unregisteredUser?.[userLocale] ?? "Unregistered user";
           }
         } else {
-          userName = `<@${result.author_id}>`;
+          userName = userMention(result.author_id);
         }
 
         const userRank = index + 1;
@@ -144,7 +145,7 @@ async function computeRankForExpressionAsync(
       .replace("{number}", rankResult.length.toString())
       .replace("{expression}", expression);
 
-    // Displayed users qui n'ont jamais utilisé l'expression
+    // Displayed users who never used the expression
     const userWhoNeverUsedIt = Array.from(displayedUsersIds).filter((userId) => {
       const userIdHash = HashHelper.computeHash(userId);
       return !rankResult.some((result) => result.author_id === userIdHash || result.author_id === userId);
@@ -153,7 +154,7 @@ async function computeRankForExpressionAsync(
     if (userWhoNeverUsedIt.length > 0) {
       const neverUsedTranslation =
         translations.responses?.neverUseExpression?.[userLocale] ?? "Have never used this expression";
-      const neverUsedList = userWhoNeverUsedIt.map((userId) => `<@${userId}>`).join("\n");
+      const neverUsedList = userWhoNeverUsedIt.map((userId) => userMention(userId)).join("\n");
       embedDescription += `\n\n**${neverUsedTranslation}**\n${neverUsedList}`;
     }
 

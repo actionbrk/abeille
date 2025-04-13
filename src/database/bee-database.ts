@@ -6,8 +6,13 @@ import type { MessageDay } from "../models/database/message-day";
 import { HashHelper } from "../utils/hash-helper";
 import logger from "../logger";
 
+const dbFolder = "./db";
+
+export const getDbFolder = (): string => dbFolder;
+
 export function saveMessage(guildId: string, message: Message) {
   const db = getDatabaseForGuild(guildId);
+
   const statement = db.query(
     `INSERT INTO message (message_id, author_id, channel_id, timestamp, content, attachment_url) VALUES ($message_id, $author_id, $channel_id, $timestamp, $content, $attachment_url)`
   );
@@ -403,10 +408,17 @@ export function cleanOldChannels(guildId: string, channelIds: string[]): void {
   statement.run(...channelIds);
 }
 
+export function getLastMessageId(guildId: string): string | null {
+  const db = getDatabaseForGuild(guildId);
+  const statement = db.query(`SELECT message_id FROM message ORDER BY timestamp DESC LIMIT 1`);
+  const result = statement.get() as { message_id: string } | null;
+  return result ? result.message_id : null;
+}
+
 const existingDatabases = new Set<string>();
 
 const getDatabaseForGuild = (guildId: string): Database => {
-  const dbPath = `./db/${guildId}.db`;
+  const dbPath = `${dbFolder}/${guildId}.db`;
   const db = new Database(dbPath);
 
   if (!existingDatabases.has(guildId)) {

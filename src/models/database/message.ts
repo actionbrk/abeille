@@ -20,3 +20,7 @@ export function fromDiscordMessage(message: DiscordMessage): Message {
     attachment_url: message.attachments.first()?.url || null,
   };
 }
+
+export function messageHasContentOrUrl(message: Message): boolean {
+  return (message.content !== null && message.content.trim() !== "") || message.attachment_url !== null;
+}

@@ -3,6 +3,8 @@ import type { BeeEvent } from "../models/events";
 import { loadCommandsAsync } from "../loaders";
 import logger from "../logger";
 import type { Command } from "../models/command";
+import { getLastMessageIdFromCache } from "../abeille-db-sync";
+import { saveMessagesForGuild } from "../commands/admin/save";
 
 const ClientReadyEvent: BeeEvent<Events.ClientReady> = {
   name: Events.ClientReady,
@@ -13,6 +15,14 @@ const ClientReadyEvent: BeeEvent<Events.ClientReady> = {
       const commands = await loadCommandsAsync();
 
       await registerSlashsCommands(client, commands);
+
+      syncMessagesOfGuilds(client)
+        .then(() => {
+          logger.info("Messages synced successfully");
+        })
+        .catch((error) => {
+          logger.error("Error syncing messages: %s", error);
+        });
 
       logger.info("Ready! Logged in as %s", client.user.tag);
     } catch (error) {
@@ -59,4 +69,31 @@ async function registerSlashsCommands(client: Client, allCommands: Collection<st
   } catch (error) {
     logger.error("Error registering slash commands: %s", error);
   }
+}
+
+async function syncMessagesOfGuilds(client: Client): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      client.guilds.cache.forEach((guild) => {
+        logger.info("Connected to guild: %s (ID: %s)", guild.name, guild.id);
+
+        logger.info("Retrieving messages from last message saved for the guild %s", guild.name);
+
+        const lastMessageId = getLastMessageIdFromCache(guild.id);
+
+        if (lastMessageId) {
+          logger.info("Last message ID found for guild %s: %s", guild.name, lastMessageId);
+
+          saveMessagesForGuild(guild, lastMessageId);
+        } else {
+          logger.info("No last message ID found for guild %s", guild.name);
+        }
+      });
+    } catch (error) {
+      logger.error("Error syncing messages for guilds: %s", error);
+      reject(error);
+    }
+
+    resolve();
+  });
 }
