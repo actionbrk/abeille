@@ -1,5 +1,11 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1-slim AS base
 WORKDIR /usr/src/app
+
+# Fonts
+RUN apt-get update && apt-get install -y \
+    fontconfig \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
 # install dependencies into temp directory
 # this will cache them and speed up future builds
@@ -17,6 +23,9 @@ RUN cd /temp/prod && bun install --frozen-lockfile --production
 FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
 COPY . .
+
+# make sure db directory exists and is owned by bun user
+RUN mkdir -p /usr/src/app/db && chown bun:bun /usr/src/app/db
 
 # run the app
 USER bun

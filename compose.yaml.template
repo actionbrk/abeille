@@ -10,7 +10,7 @@ services:
       - ITER=${ITER}
       - LOG_LEVEL=info
     volumes:
-      - abeille-data:/db
+      - abeille-data:/usr/src/app/db
     restart: unless-stopped
 
 volumes:
