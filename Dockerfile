@@ -1,4 +1,4 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1-slim AS base
 WORKDIR /usr/src/app
 
 # Fonts
@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y \
     fontconfig \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
+
+# Python
+RUN apt update && apt install python3 python3-pip make g++ -y
 
 # install dependencies into temp directory
 # this will cache them and speed up future builds
