@@ -1,17 +1,10 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1-slim AS base
 WORKDIR /usr/src/app
 
-# Fonts and required tools
+# Fonts
 RUN apt-get update && apt-get install -y \
     fontconfig \
     fonts-dejavu-core \
-    build-essential \
-    pkg-config \
-    libcairo2-dev \
-    libjpeg-dev \
-    libpango1.0-dev \
-    libgif-dev \
-    librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Python
