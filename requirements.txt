@@ -1,6 +1,0 @@
-discord.py==2.5.2
-kaleido==0.2.1
-pandas==2.2.3
-peewee==3.17.9
-plotly==6.0.1
-requests==2.32.3

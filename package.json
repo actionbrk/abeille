@@ -1,0 +1,37 @@
+{
+  "name": "abeille",
+  "version": "1.0.0",
+  "description": "A Discord bot for tracking and analyzing message trends",
+  "main": "src/abeille.ts",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "bun run src/abeille.ts",
+    "dev": "bun run src/abeille.ts",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@types/bun": "latest",
+    "eslint": "^9.24.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.29.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@zip.js/zip.js": "^2.7.60",
+    "chart.js": "^4.4.8",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-node-canvas": "^5.0.0",
+    "csv-stringify": "^6.5.2",
+    "date-fns": "^4.1.0",
+    "discord.js": "^14.18.0",
+    "nodejs-polars": "^0.18.0",
+    "sharp": "^0.34.1",
+    "winston": "^3.17.0"
+  }
+}

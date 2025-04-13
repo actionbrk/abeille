@@ -1,13 +1,17 @@
 services:
-  server:
+  abeille:
     image: actionbrk/abeille
     container_name: abeille
     environment:
-      - DISCORD_TOKEN=[DISCORD_TOKEN]
-      - HASHNAME=[HASHNAME]
-      - SALT=[SALT]
-      - ITER=[ITER]
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - OWNER_ID=${OWNER_ID}
+      - HASHNAME=${HASHNAME}
+      - SALT=${SALT}
+      - ITER=${ITER}
+      - LOG_LEVEL=info
     volumes:
-      - abeille-data:/db
+      - abeille-data:/usr/src/app/db
+    restart: unless-stopped
+
 volumes:
   abeille-data:

@@ -10,14 +10,13 @@ services:
       - SALT=[SALT]
       - ITER=[ITER]
     volumes:
-      - abeille-data:/db
+      - abeille-data:/usr/src/app/db
     develop:
       watch:
-        - action: sync
+        - action: sync+restart
           path: .
-          target: /app
+          target: /usr/src/app
           ignore:
-            - .mypy_cache
             - .vscode
 volumes:
   abeille-data:
