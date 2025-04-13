@@ -7,9 +7,6 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
-# Python
-RUN apt update && apt install python3 python3-pip make g++ -y
-
 # install dependencies into temp directory
 # this will cache them and speed up future builds
 FROM base AS install
