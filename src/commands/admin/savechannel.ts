@@ -34,7 +34,7 @@ const SaveChannelCommand: Command = {
       return;
     }
 
-    saveMessagesForGuild(interaction.guild!, undefined, interaction, channel.id);
+    await saveMessagesForGuild(interaction.guild!, undefined, interaction, channel.id);
   },
 };
 
