@@ -408,6 +408,12 @@ export function cleanOldChannels(guildId: string, channelIds: string[]): void {
   statement.run(...channelIds);
 }
 
+export function deleteMessagesFromChannel(guildId: string, channelId: string): void {
+  const db = getDatabaseForGuild(guildId);
+  const statement = db.query(`DELETE FROM message WHERE channel_id = ?`);
+  statement.run(channelId);
+}
+
 export function getLastMessageId(guildId: string): string | null {
   const db = getDatabaseForGuild(guildId);
   const statement = db.query(`SELECT message_id FROM message ORDER BY timestamp DESC LIMIT 1`);
