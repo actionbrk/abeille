@@ -72,28 +72,19 @@ async function registerSlashsCommands(client: Client, allCommands: Collection<st
 }
 
 async function syncMessagesOfGuilds(client: Client): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      client.guilds.cache.forEach((guild) => {
-        logger.info("Connected to guild: %s (ID: %s)", guild.name, guild.id);
+  const syncPromises = client.guilds.cache.map(async (guild) => {
+    logger.info("Connected to guild: %s (ID: %s)", guild.name, guild.id);
+    logger.info("Retrieving messages from last message saved for the guild %s", guild.name);
 
-        logger.info("Retrieving messages from last message saved for the guild %s", guild.name);
+    const lastMessageId = getLastMessageIdFromCache(guild.id);
 
-        const lastMessageId = getLastMessageIdFromCache(guild.id);
-
-        if (lastMessageId) {
-          logger.info("Last message ID found for guild %s: %s", guild.name, lastMessageId);
-
-          saveMessagesForGuild(guild, lastMessageId);
-        } else {
-          logger.info("No last message ID found for guild %s", guild.name);
-        }
-      });
-    } catch (error) {
-      logger.error("Error syncing messages for guilds: %s", error);
-      reject(error);
+    if (lastMessageId) {
+      logger.info("Last message ID found for guild %s: %s", guild.name, lastMessageId);
+      await saveMessagesForGuild(guild, lastMessageId);
+    } else {
+      logger.info("No last message ID found for guild %s", guild.name);
     }
-
-    resolve();
   });
+
+  await Promise.all(syncPromises);
 }
