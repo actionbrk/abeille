@@ -404,8 +404,22 @@ export function initializeMessageDays(guildId: string) {
 
 export function cleanOldChannels(guildId: string, channelIds: string[]): void {
   const db = getDatabaseForGuild(guildId);
-  const statement = db.query(`DELETE FROM message WHERE channel_id NOT IN (${channelIds.map(() => "?").join(",")})`);
-  statement.run(...channelIds);
+
+  const existingChannels = db.query("SELECT DISTINCT channel_id FROM message").all() as { channel_id: string }[];
+  const channelsToDelete = existingChannels
+    .map((c) => c.channel_id)
+    .filter((channelId) => !channelIds.includes(channelId));
+
+  const batchSize = 500;
+  // Process channels to delete in batches to avoid sqlite's limit on the number of parameters
+  db.transaction(() => {
+    for (let i = 0; i < channelsToDelete.length; i += batchSize) {
+      const batch = channelsToDelete.slice(i, i + batchSize);
+      const placeholders = batch.map(() => "?").join(",");
+      const statement = db.query(`DELETE FROM message WHERE channel_id IN (${placeholders})`);
+      statement.run(...batch);
+    }
+  })();
 }
 
 export function deleteMessagesFromChannel(guildId: string, channelId: string): void {
