@@ -12,7 +12,12 @@ const MessageCreateEvent: BeeEvent<Events.MessageCreate> = {
 
     // Command !save {guild_id}, only from the bot owner in PM
     if (message.author.id === process.env.OWNER_ID && message.guildId === null && message.content?.startsWith("!save")) {
-      const guildId = message.content.split(" ")[1]!;
+      const guildId = message.content.split(" ")[1];
+      if (!guildId) {
+        logger.error("Guild ID not provided in the command.");
+        await message.reply("Invalid command format. Use !save {guild_id}.");
+        return;
+      }
       const guild = message.client.guilds.cache.get(guildId)!;
       if (guild) {
         await message.reply(`Start saving messages for guild ${guild.name}...`);
