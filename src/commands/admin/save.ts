@@ -68,11 +68,11 @@ export default SaveCommand;
 /**
  * Saves messages from a guild to the database.
  * @param {Guild} guild - The guild to save messages from.
- * @param {string | null} since - The snowflake of the messages to start saving from.
+ * @param {string} since - The snowflake of the messages to start saving from.
  * @param {ChatInputCommandInteraction} [interaction] - The interaction that triggered the command.
  * @returns {Promise<void>} - A promise that resolves when the operation is complete.
  */
-export async function saveMessagesForGuild(guild: Guild, since: string | undefined, interaction?: ChatInputCommandInteraction): Promise<void> {
+export async function saveMessagesForGuild(guild: Guild, since?: string, interaction?: ChatInputCommandInteraction): Promise<void> {
   logger.info("Saving messages for guild %s", guild.id);
 
   const guildId = guild.id;
