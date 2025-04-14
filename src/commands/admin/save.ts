@@ -188,7 +188,7 @@ export async function saveMessagesForGuild(
     }
   }
 
-  const channelsIds = viewableChannels.map((channel) => channel.id);
+  const channelsIds = textChannels.map((channel) => channel.id);
   logger.info("Checked %d channels in guild %s", channelsIds.length, guildId);
 
   cleanOldChannels(guildId, channelsIds);
