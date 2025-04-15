@@ -87,6 +87,17 @@ const ChannelsCommand: Command = {
               name: channel.name,
               count: threadStats.count,
             });
+          } else {
+            existingCategory.push({
+              channelName: parentChannel.name,
+              count: 0,
+              threads: [
+                {
+                  name: channel.name,
+                  count: threadStats.count,
+                },
+              ],
+            });
           }
         }
       } else {
@@ -97,11 +108,16 @@ const ChannelsCommand: Command = {
           categorizedChannels.set(categoryName, []);
         }
 
-        categorizedChannels.get(categoryName)!.push({
-          channelName: channel.name,
-          count: stats?.count ?? 0,
-          threads: [],
-        });
+        const existingChannel = categorizedChannels.get(categoryName)!.find((ch) => ch.channelName === channel.name);
+        if (existingChannel) {
+          existingChannel.count = stats?.count ?? 0;
+        } else {
+          categorizedChannels.get(categoryName)!.push({
+            channelName: channel.name,
+            count: stats?.count ?? 0,
+            threads: [],
+          });
+        }
       }
     });
 
