@@ -90,7 +90,7 @@ const CompareCommand: Command = {
         )
     ),
   async execute(interaction) {
-    const deferReply = interaction.deferReply({ withResponse: true });
+    await interaction.deferReply();
 
     const guildId = interaction.guildId!;
     const expression1 = interaction.options.getString("expression1", true);
@@ -102,7 +102,6 @@ const CompareCommand: Command = {
 
     const fileBuffer = await plotCompare(guildId, expression1, expression2, period, userLocale, serverName, botName);
 
-    await deferReply;
     await interaction.editReply({
       files: [
         {

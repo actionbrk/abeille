@@ -33,7 +33,7 @@ const RankCommand: Command = {
         .setMaxLength(200)
     ),
   async execute(interaction) {
-    const deferReply = interaction.deferReply({ withResponse: true });
+    await interaction.deferReply();
 
     const guildId = interaction.guildId!;
     const expression = interaction.options.getString("expression", true);
@@ -50,7 +50,6 @@ const RankCommand: Command = {
       .setStyle(ButtonStyle.Primary)
       .setEmoji("📊");
 
-    await deferReply;
     const message = await interaction.editReply({
       embeds: [embed],
       components: [
