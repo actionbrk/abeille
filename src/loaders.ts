@@ -80,6 +80,7 @@ export async function loadCommandsAsync(): Promise<Collection<string, Command>> 
 
 export async function loadLocalesAsync() {
   const localesPath = path.join(__dirname, "locales");
+  logger.info("Loading locales from %s", localesPath);
   const localeFiles = fs.readdirSync(localesPath).filter((file) => file.endsWith(".json"));
 
   const locales = new Collection<Locale, Translation>();
@@ -87,6 +88,7 @@ export async function loadLocalesAsync() {
   const possibleLocales = Object.values(Locale);
 
   for (const file of localeFiles) {
+    logger.debug("Loading locale file: %s", file);
     const filePath = path.join(localesPath, file);
     const localeName = file.split(".")[0];
     const localeData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
@@ -98,6 +100,8 @@ export async function loadLocalesAsync() {
 
     locales.set(localeName! as Locale, localeData);
   }
+
+  logger.info("Loaded %d locales", locales.size);
 
   return locales;
 }
