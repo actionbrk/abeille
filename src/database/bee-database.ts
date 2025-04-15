@@ -441,17 +441,20 @@ export function initializeMessageDays(guildId: string) {
     return;
   }
 
-  // Calculate daily counts
-  db.exec(`
-    INSERT INTO messageday (date, count)
-    SELECT
-      DATE(timestamp) as date,
-      COUNT(*) as count
-    FROM message
-    GROUP BY DATE(timestamp)
-    ON CONFLICT(date) DO UPDATE SET
-    count = excluded.count
-  `);
+  db.transaction(() => {
+    // Clear existing data
+    db.run(`DELETE FROM messageday`);
+
+    // Calculate daily counts
+    db.run(`
+      INSERT INTO messageday (date, count)
+      SELECT
+        DATE(timestamp) as date,
+        COUNT(*) as count
+      FROM message
+      GROUP BY DATE(timestamp)
+    `);
+  })();
 }
 
 export function cleanOldChannels(guildId: string, channelIds: string[]): void {
