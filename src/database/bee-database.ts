@@ -79,7 +79,7 @@ export function getTrend(
     filtered_messages AS (
       SELECT m.*, DATE(m.timestamp) AS message_date
       FROM message m
-      JOIN matched ON m.message_id = matched.rowid
+      JOIN matched ON m.rowid = matched.rowid
     )
     SELECT fm.message_date AS date,
            COUNT(*) / CAST(md.count AS REAL) AS messages
@@ -114,7 +114,7 @@ export function getRank(guildId: string, expression: string): RankResult[] {
     SELECT IF (i.real_author_id IS NULL, m.author_id, CAST(i.real_author_id AS TEXT)) as author_id,
            COUNT(*) AS count
     FROM matched
-    JOIN message AS m ON m.message_id = matched.rowid
+    JOIN message AS m ON m.rowid = matched.rowid
     LEFT JOIN "identity" i ON m.author_id = i.author_id
     GROUP BY m.author_id
     ORDER BY count DESC;
@@ -326,11 +326,12 @@ export async function rebuildIndexes(guildId: string): Promise<void> {
   const db = getDatabaseForGuild(guildId);
 
   // Drop and recreate the FTS5 index
+  // TODO: Should we use https://sqlite.org/fts5.html#the_rebuild_command instead?
   db.exec(`
     DROP TABLE IF EXISTS messageindex;
-    CREATE VIRTUAL TABLE messageindex USING fts5(content, content="message", content_rowid="message_id", tokenize="trigram");
+    CREATE VIRTUAL TABLE messageindex USING fts5(content, content="message", tokenize="trigram");
     INSERT INTO messageindex(rowid, content)
-      SELECT message_id, content FROM message WHERE content IS NOT NULL;
+      SELECT rowid, content FROM message WHERE content IS NOT NULL;
   `);
 
   await optimizeDatabase(guildId);
@@ -451,16 +452,16 @@ function initDatabase(db: Database) {
       count INTEGER NOT NULL
     );
 
-    CREATE VIRTUAL TABLE IF NOT EXISTS "messageindex" USING fts5 ("content", content="message", content_rowid="message_id", tokenize="trigram");
+    CREATE VIRTUAL TABLE IF NOT EXISTS "messageindex" USING fts5 ("content", content="message", tokenize="trigram");
   `);
 
   db.exec(
-    `CREATE TRIGGER IF NOT EXISTS message_ad AFTER DELETE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content); END;`
+    `CREATE TRIGGER IF NOT EXISTS message_ad AFTER DELETE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.rowid, old.content); END;`
   );
   db.exec(
-    `CREATE TRIGGER IF NOT EXISTS message_ai AFTER INSERT ON message BEGIN INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content); END;`
+    `CREATE TRIGGER IF NOT EXISTS message_ai AFTER INSERT ON message BEGIN INSERT INTO messageindex(rowid, content) VALUES (new.rowid, new.content); END;`
   );
   db.exec(
-    `CREATE TRIGGER IF NOT EXISTS message_au AFTER UPDATE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.message_id, old.content); INSERT INTO messageindex(rowid, content) VALUES (new.message_id, new.content); END;`
+    `CREATE TRIGGER IF NOT EXISTS message_au AFTER UPDATE ON message BEGIN INSERT INTO messageindex(messageindex, rowid, content) VALUES('delete', old.rowid, old.content); INSERT INTO messageindex(rowid, content) VALUES (new.rowid, new.content); END;`
   );
 }
