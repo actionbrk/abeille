@@ -1,7 +1,7 @@
 import { Events, type Message } from "discord.js";
 import type { BeeEvent } from "../../models/events";
 import { saveMessage } from "../../database/bee-database";
-import { fromDiscordMessage, messageHasContentOrUrl } from "../../models/database/message";
+import { fromDiscordMessage, filterSaveMessages } from "../../models/database/message";
 import logger from "../../logger";
 import { saveMessagesForGuild } from "../../commands/admin/save";
 
@@ -35,11 +35,10 @@ const MessageCreateEvent: BeeEvent<Events.MessageCreate> = {
     try {
       const dbMessage = fromDiscordMessage(message);
 
-      if (messageHasContentOrUrl(dbMessage)) {
+      if (filterSaveMessages(dbMessage, message)) {
         saveMessage(message.guild!.id, dbMessage);
         logger.debug("Saved message %s from channel %s", message.id, message.channelId);
       }
-
     } catch (error) {
       logger.error("Error saving message %s: %o", message.id, error);
     }

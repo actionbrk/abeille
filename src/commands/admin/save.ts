@@ -15,9 +15,10 @@ import {
   optimizeDatabase,
   saveChannelMessages,
 } from "../../database/bee-database";
-import { fromDiscordMessage, messageHasContentOrUrl } from "../../models/database/message";
+import { fromDiscordMessage, filterSaveMessages } from "../../models/database/message";
 import logger from "../../logger";
 import { getSnowflakeFromDate } from "../../utils/snowflake-helper";
+import { getAllTextChannels } from "../../utils/channel-helper";
 
 const translations = LocaleHelper.getCommandTranslations("save");
 
@@ -29,22 +30,24 @@ const SaveCommand: Command = {
     .setDescriptionLocalizations(translations.localizedDescriptions)
     .setContexts([InteractionContextType.Guild])
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addIntegerOption((option) => option.setName("since")
-      .setNameLocalizations(translations.options!.since!.localizedNames)
-      .setDescription("Save messages since a specific date.")
-      .setDescriptionLocalizations(translations.options!.since!.localizedDescriptions)
-      .addChoices(
-        {
-          name: "1 day",
-          name_localizations: translations.options?.since?.choices?.oneDay?.localizedNames,
-          value: 1,
-        },
-        {
-          name: "1 week",
-          name_localizations: translations.options?.since?.choices?.oneWeek?.localizedNames,
-          value: 7,
-        }
-      )
+    .addIntegerOption((option) =>
+      option
+        .setName("since")
+        .setNameLocalizations(translations.options!.since!.localizedNames)
+        .setDescription("Save messages since a specific date.")
+        .setDescriptionLocalizations(translations.options!.since!.localizedDescriptions)
+        .addChoices(
+          {
+            name: "1 day",
+            name_localizations: translations.options?.since?.choices?.oneDay?.localizedNames,
+            value: 1,
+          },
+          {
+            name: "1 week",
+            name_localizations: translations.options?.since?.choices?.oneWeek?.localizedNames,
+            value: 7,
+          }
+        )
     ),
   async execute(interaction) {
     await interaction.deferReply();
@@ -56,7 +59,7 @@ const SaveCommand: Command = {
     if (since) {
       const sinceDate = new Date();
       sinceDate.setDate(sinceDate.getDate() - since);
-      lastMessageId = getSnowflakeFromDate(sinceDate)
+      lastMessageId = getSnowflakeFromDate(sinceDate);
     }
 
     await saveMessagesForGuild(guild, lastMessageId, interaction);
@@ -70,9 +73,15 @@ export default SaveCommand;
  * @param {Guild} guild - The guild to save messages from.
  * @param {string} since - The snowflake of the messages to start saving from.
  * @param {ChatInputCommandInteraction} [interaction] - The interaction that triggered the command.
+ * @param {string} [channelId] - The ID of a specific channel to save messages from.
  * @returns {Promise<void>} - A promise that resolves when the operation is complete.
  */
-export async function saveMessagesForGuild(guild: Guild, since?: string, interaction?: ChatInputCommandInteraction): Promise<void> {
+export async function saveMessagesForGuild(
+  guild: Guild,
+  since?: string,
+  interaction?: ChatInputCommandInteraction,
+  channelId?: string
+): Promise<void> {
   logger.info("Saving messages for guild %s", guild.id);
 
   const guildId = guild.id;
@@ -80,8 +89,10 @@ export async function saveMessagesForGuild(guild: Guild, since?: string, interac
   let totalSaved = 0;
   let totalChannels = 0;
 
-  // Get all text channels
-  const textChannels = guild.channels.cache.filter((channel) => channel.viewable);
+  // Get all viewable channels
+  const viewableChannels = guild.channels.cache.filter(
+    (channel) => channel.viewable && (channelId === undefined || channel.id === channelId)
+  );
 
   let progressMessage: Message<boolean> | null = null;
   if (interaction) {
@@ -90,6 +101,8 @@ export async function saveMessagesForGuild(guild: Guild, since?: string, interac
     });
   }
 
+  const textChannels = await getAllTextChannels(viewableChannels);
+
   // Process each channel
   for (const [, channel] of textChannels) {
     try {
@@ -97,14 +110,13 @@ export async function saveMessagesForGuild(guild: Guild, since?: string, interac
       let messagesFound = true;
       const channelMessages = [];
 
+      if (channel.isThread() && !channel.joined) {
+        await channel.join();
+        logger.info("Joined thread %s in channel %s", channel.name, channel.parent?.name);
+      }
+
       // Fetch messages in batches
       while (messagesFound) {
-        if (!channel.isTextBased()) {
-          logger.warn("Skipping non-text channel %s", channel.name);
-          messagesFound = false;
-          continue;
-        }
-
         const options: FetchMessagesOptions = { limit: 100, cache: false };
 
         if (since) {
@@ -131,10 +143,17 @@ export async function saveMessagesForGuild(guild: Guild, since?: string, interac
         }
 
         // Convert messages to our format
-        const validMessages = messages
-          .filter((msg) => !msg.author.bot)
-          .map((msg) => fromDiscordMessage(msg))
-          .filter((msg) => messageHasContentOrUrl(msg));
+        const validMessages = [];
+
+        for (const message of messages.values()) {
+          if (message.author.bot) continue;
+
+          const dbMessage = fromDiscordMessage(message);
+
+          if (filterSaveMessages(dbMessage, message)) {
+            validMessages.push(dbMessage);
+          }
+        }
 
         channelMessages.push(...validMessages);
 
@@ -191,4 +210,3 @@ export async function saveMessagesForGuild(guild: Guild, since?: string, interac
     });
   }
 }
-

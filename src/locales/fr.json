@@ -172,7 +172,8 @@
       "description": "Affichez tous les salons suivis et le nombre de messages associés.",
       "responses": {
         "title": "Statistiques des salons suivis",
-        "footer": "Total : {total} messages dans {channels} salons suivis"
+        "footer": "Total : {total} messages dans {channels} salons suivis",
+        "buttonError": "Vous ne pouvez pas utiliser ces boutons."
       }
     },
     "purge": {
@@ -220,11 +221,7 @@
         }
       },
       "responses": {
-        "invalidChannel": "Seuls les salons textuels peuvent être sauvegardés.",
-        "scanning": "Analyse des messages dans #{channel} en cours...",
-        "progress": "{saved} messages sauvegardés dans #{channel}...",
-        "success": "{messages} messages ont été sauvegardés avec succès dans #{channel}.",
-        "error": "Une erreur est survenue lors de la sauvegarde des messages dans #{channel}."
+        "invalidChannel": "Seuls les salons textuels peuvent être sauvegardés."
       }
     },
     "logging": {

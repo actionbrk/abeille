@@ -13,20 +13,33 @@ export const getDbFolder = (): string => dbFolder;
 export function saveMessage(guildId: string, message: Message) {
   const db = getDatabaseForGuild(guildId);
 
-  const statement = db.query(
-    `INSERT INTO message (message_id, author_id, channel_id, timestamp, content, attachment_url) VALUES ($message_id, $author_id, $channel_id, $timestamp, $content, $attachment_url)`
-  );
+  db.transaction(() => {
+    const statement = db.query(
+      `INSERT INTO message (message_id, author_id, channel_id, timestamp, content, attachment_url)
+       VALUES ($message_id, $author_id, $channel_id, $timestamp, $content, $attachment_url)`
+    );
 
-  statement.run({
-    $message_id: message.message_id,
-    $author_id: message.author_id,
-    $channel_id: message.channel_id,
-    $timestamp: message.timestamp.toISOString(),
-    $content: message.content,
-    $attachment_url: message.attachment_url,
-  });
+    statement.run({
+      $message_id: message.message_id,
+      $author_id: message.author_id,
+      $channel_id: message.channel_id,
+      $timestamp: message.timestamp.toISOString(),
+      $content: message.content,
+      $attachment_url: message.attachment_url,
+    });
 
-  updateMessageDay(guildId, message);
+    // Atomic update of the daily message counter
+    const date = new Date(message.timestamp).toISOString().split("T")[0];
+    if (date) {
+      const updateDayStatement = db.query(`
+        INSERT INTO messageday (date, count)
+        VALUES ($date, 1)
+        ON CONFLICT(date) DO UPDATE SET
+        count = count + 1
+      `);
+      updateDayStatement.run({ $date: date });
+    }
+  })();
 }
 
 export function updateMessage(
@@ -287,19 +300,42 @@ export function purgeDeletedMessages(guildId: string, messageIds: string[]): num
 
 export async function saveChannelMessages(guildId: string, messages: Message[]): Promise<void> {
   const db = getDatabaseForGuild(guildId);
-  const statement = db.query(
-    "INSERT OR IGNORE INTO message (message_id, author_id, channel_id, timestamp, content, attachment_url) VALUES ($message_id, $author_id, $channel_id, $timestamp, $content, $attachment_url)"
-  );
 
   db.transaction(() => {
+    const insertStatement = db.query(
+      "INSERT OR IGNORE INTO message (message_id, author_id, channel_id, timestamp, content, attachment_url) VALUES ($message_id, $author_id, $channel_id, $timestamp, $content, $attachment_url)"
+    );
+
+    // Group messages by date for counter updates
+    const messagesByDate = new Map<string, number>();
+
     for (const message of messages) {
-      statement.run({
+      insertStatement.run({
         $message_id: message.message_id,
         $author_id: message.author_id,
         $channel_id: message.channel_id,
         $timestamp: message.timestamp.toISOString(),
         $content: message.content,
         $attachment_url: message.attachment_url,
+      });
+
+      const date = new Date(message.timestamp).toISOString().split("T")[0];
+      if (date) {
+        messagesByDate.set(date, (messagesByDate.get(date) || 0) + 1);
+      }
+    }
+
+    // Update daily counters in a single transaction
+    for (const [date, count] of messagesByDate) {
+      const updateDayStatement = db.query(`
+        INSERT INTO messageday (date, count)
+        VALUES ($date, $count)
+        ON CONFLICT(date) DO UPDATE SET
+        count = count + $count
+      `);
+      updateDayStatement.run({
+        $date: date,
+        $count: count,
       });
     }
   })();
@@ -342,14 +378,30 @@ export function updateMessageDay(guildId: string, message: Message, isDelete: bo
   const date = new Date(message.timestamp).toISOString().split("T")[0];
   if (!date) return;
 
-  const statement = db.query(`
-    INSERT INTO messageday (date, count)
-    VALUES ($date, 1)
-    ON CONFLICT(date) DO UPDATE SET
-    count = count ${isDelete ? "-" : "+"} 1
-  `);
+  db.transaction(() => {
+    // First check if the entry exists
+    const checkStatement = db.query(`
+      SELECT count FROM messageday WHERE date = $date
+    `);
+    const result = checkStatement.get({ $date: date }) as { count: number } | undefined;
 
-  statement.run({ $date: date });
+    if (result) {
+      // Atomic update with check to prevent negative counter
+      const updateStatement = db.query(`
+        UPDATE messageday
+        SET count = MAX(0, count ${isDelete ? "-" : "+"} 1)
+        WHERE date = $date
+      `);
+      updateStatement.run({ $date: date });
+    } else if (!isDelete) {
+      // Insert only if it's not a deletion
+      const insertStatement = db.query(`
+        INSERT INTO messageday (date, count)
+        VALUES ($date, 1)
+      `);
+      insertStatement.run({ $date: date });
+    }
+  })();
 }
 
 export function getMessageDayRange(guildId: string, startDate: Date, endDate: Date): MessageDay[] {
@@ -390,23 +442,46 @@ export function initializeMessageDays(guildId: string) {
     return;
   }
 
-  // Calculate daily counts
-  db.exec(`
-    INSERT INTO messageday (date, count)
-    SELECT
-      DATE(timestamp) as date,
-      COUNT(*) as count
-    FROM message
-    GROUP BY DATE(timestamp)
-    ON CONFLICT(date) DO UPDATE SET
-    count = excluded.count
-  `);
+  db.transaction(() => {
+    // Clear existing data
+    db.run(`DELETE FROM messageday`);
+
+    // Calculate daily counts
+    db.run(`
+      INSERT INTO messageday (date, count)
+      SELECT
+        DATE(timestamp) as date,
+        COUNT(*) as count
+      FROM message
+      GROUP BY DATE(timestamp)
+    `);
+  })();
 }
 
 export function cleanOldChannels(guildId: string, channelIds: string[]): void {
   const db = getDatabaseForGuild(guildId);
-  const statement = db.query(`DELETE FROM message WHERE channel_id NOT IN (${channelIds.map(() => "?").join(",")})`);
-  statement.run(...channelIds);
+
+  const existingChannels = db.query("SELECT DISTINCT channel_id FROM message").all() as { channel_id: string }[];
+  const channelsToDelete = existingChannels
+    .map((c) => c.channel_id)
+    .filter((channelId) => !channelIds.includes(channelId));
+
+  const batchSize = 500;
+  // Process channels to delete in batches to avoid sqlite's limit on the number of parameters
+  db.transaction(() => {
+    for (let i = 0; i < channelsToDelete.length; i += batchSize) {
+      const batch = channelsToDelete.slice(i, i + batchSize);
+      const placeholders = batch.map(() => "?").join(",");
+      const statement = db.query(`DELETE FROM message WHERE channel_id IN (${placeholders})`);
+      statement.run(...batch);
+    }
+  })();
+}
+
+export function deleteMessagesFromChannel(guildId: string, channelId: string): void {
+  const db = getDatabaseForGuild(guildId);
+  const statement = db.query(`DELETE FROM message WHERE channel_id = ?`);
+  statement.run(channelId);
 }
 
 export function getLastMessageId(guildId: string): string | null {

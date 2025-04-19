@@ -1,4 +1,4 @@
-import type { Message as DiscordMessage } from "discord.js";
+import { MessageType, type Message as DiscordMessage } from "discord.js";
 import { HashHelper } from "../../utils/hash-helper";
 
 export interface Message {
@@ -21,6 +21,11 @@ export function fromDiscordMessage(message: DiscordMessage): Message {
   };
 }
 
-export function messageHasContentOrUrl(message: Message): boolean {
-  return (message.content !== null && message.content.trim() !== "") || message.attachment_url !== null;
+export function filterSaveMessages(message: Message, discordMessage: DiscordMessage): boolean {
+  return (
+    ((message.content !== null && message.content.trim() !== "") || message.attachment_url !== null) &&
+    // When a thread is created inside a text channel, it sends a message with the type ThreadCreated.
+    // We don't want to save that message, because it will duplicate the message from the text channel.
+    discordMessage.type !== MessageType.ThreadCreated
+  );
 }

@@ -44,7 +44,7 @@ const TrendCommand: Command = {
         .setMaxLength(50)
     ),
   async execute(interaction) {
-    const deferReply = interaction.deferReply({ withResponse: true });
+    await interaction.deferReply();
 
     const guildId = interaction.guildId!;
     const term = interaction.options.getString("term", true);
@@ -110,7 +110,6 @@ const TrendCommand: Command = {
       },
     ];
 
-    await deferReply;
     const message = await interaction.editReply({
       files: [
         {
