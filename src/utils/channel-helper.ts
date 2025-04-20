@@ -1,4 +1,11 @@
-import { type ThreadManager, Collection, type GuildBasedChannel, type TextBasedChannel, ChannelType } from "discord.js";
+import {
+  type ThreadManager,
+  Collection,
+  type GuildBasedChannel,
+  type TextBasedChannel,
+  ChannelType,
+  PermissionsBitField,
+} from "discord.js";
 import logger from "../logger";
 
 export async function getAllTextChannels(
@@ -50,8 +57,16 @@ async function fetchAndStoreThreads(
     textChannels.set(thread.id, thread);
   });
 
-  const privateArchivedChannelThreads = await threadManager.fetchArchived({ fetchAll: true, type: "private" }, false);
-  privateArchivedChannelThreads.threads.forEach((thread) => {
-    textChannels.set(thread.id, thread);
-  });
+  const botPermissionInChannel = threadManager.channel.permissionsFor(threadManager.client.user!);
+  if (botPermissionInChannel !== null && botPermissionInChannel.has(PermissionsBitField.Flags.ManageThreads)) {
+    const privateArchivedChannelThreads = await threadManager.fetchArchived({ fetchAll: true, type: "private" }, false);
+    privateArchivedChannelThreads.threads.forEach((thread) => {
+      textChannels.set(thread.id, thread);
+    });
+  } else {
+    logger.info(
+      "Bot does not have permission to manage threads in channel %o. Private threads in this channel are ignored.",
+      threadManager.channel.name
+    );
+  }
 }
