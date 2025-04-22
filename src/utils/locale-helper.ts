@@ -54,27 +54,43 @@ export class LocaleHelper {
         const { name, description, options } = command;
         result.localizedNames[localeKey] = name;
         result.localizedDescriptions[localeKey] = description;
+
         if (options) {
           result.options = result.options || {};
           Object.entries(options).forEach(([optionName, option]) => {
-            result.options![optionName] = {
-              localizedNames: { [localeKey]: option.name },
-              localizedDescriptions: { [localeKey]: option.description },
-            };
+            // Initialize option if it doesn't exist
+            if (!result.options![optionName]) {
+              result.options![optionName] = {
+                localizedNames: {},
+                localizedDescriptions: {},
+              };
+            }
+
+            // Add translations for this locale
+            result.options![optionName].localizedNames[localeKey] = option.name;
+            result.options![optionName].localizedDescriptions[localeKey] = option.description;
 
             if (option.choices) {
-              result.options![optionName].choices = {};
+              result.options![optionName].choices = result.options![optionName].choices || {};
               Object.entries(option.choices).forEach(([choiceName, choice]) => {
-                result.options![optionName]!.choices![choiceName] = {
-                  name: choice.name,
-                  description: choice.description,
-                  localizedNames: { [localeKey]: choice.name },
-                  localizedDescriptions: { [localeKey]: choice.description },
-                };
+                // Initialize choice if it doesn't exist
+                if (!result.options![optionName]!.choices![choiceName]) {
+                  result.options![optionName]!.choices![choiceName] = {
+                    name: choice.name,
+                    description: choice.description,
+                    localizedNames: {},
+                    localizedDescriptions: {},
+                  };
+                }
+
+                // Add translations for this locale
+                result.options![optionName]!.choices![choiceName].localizedNames[localeKey] = choice.name;
+                result.options![optionName]!.choices![choiceName].localizedDescriptions[localeKey] = choice.description;
               });
             }
           });
         }
+
         if (command.responses) {
           result.responses = result.responses || {};
           Object.entries(command.responses).forEach(([responseName, response]) => {

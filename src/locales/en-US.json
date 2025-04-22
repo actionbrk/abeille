@@ -172,7 +172,8 @@
       "description": "List all tracked channels and their message counts.",
       "responses": {
         "title": "Channel Statistics",
-        "footer": "Total: {total} messages in {channels} channels"
+        "footer": "Total: {total} messages in {channels} channels",
+        "buttonError": "You cannot use these buttons."
       }
     },
     "purge": {
@@ -220,11 +221,7 @@
         }
       },
       "responses": {
-        "invalidChannel": "Only text channels can be saved.",
-        "scanning": "Scanning messages from #{channel}...",
-        "progress": "Saved {saved} messages from #{channel}...",
-        "success": "Successfully saved {messages} messages from #{channel}.",
-        "error": "An error occurred while saving messages from #{channel}."
+        "invalidChannel": "Only text channels can be saved."
       }
     },
     "logging": {
