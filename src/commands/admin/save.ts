@@ -194,8 +194,10 @@ export async function saveMessagesForGuild(
   cleanOldChannels(guildId, channelsIds);
   logger.info("Cleaned old channels in guild %s", guildId);
 
+  logger.info("Optimizing database for guild %s...", guildId);
   initializeMessageDays(guildId);
   await optimizeDatabase(guildId);
+  logger.info("Optimized database for guild %s.", guildId);
 
   if (progressMessage && interaction) {
     await progressMessage.edit({
