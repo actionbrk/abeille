@@ -352,7 +352,9 @@ export async function optimizeDatabase(guildId: string): Promise<void> {
 
   // Optimize FTS5 tables
   try {
+    logger.info("Optimizing FTS5 index for messageindex...");
     db.exec("INSERT INTO messageindex(messageindex) VALUES('optimize');");
+    logger.info("FTS5 index for messageindex optimized successfully.");
   } catch (error) {
     logger.error("Failed to optimize FTS5 table 'messageindex':", error);
   }
@@ -361,16 +363,15 @@ export async function optimizeDatabase(guildId: string): Promise<void> {
 export async function rebuildIndexes(guildId: string): Promise<void> {
   const db = getDatabaseForGuild(guildId);
 
-  // Drop and recreate the FTS5 index
-  // TODO: Should we use https://sqlite.org/fts5.html#the_rebuild_command instead?
-  db.exec(`
-    DROP TABLE IF EXISTS messageindex;
-    CREATE VIRTUAL TABLE messageindex USING fts5(content, content="message", tokenize="trigram");
-    INSERT INTO messageindex(rowid, content)
-      SELECT rowid, content FROM message WHERE content IS NOT NULL;
-  `);
-
-  await optimizeDatabase(guildId);
+  // Rebuild the FTS5 index
+  try {
+    logger.info("Rebuilding FTS5 index for messageindex...");
+    db.exec("INSERT INTO messageindex(messageindex) VALUES('rebuild');");
+    logger.info("FTS5 index for messageindex rebuilt successfully.");
+    await optimizeDatabase(guildId);
+  } catch (error) {
+    logger.error("Failed to rebuild FTS5 table 'messageindex':", error);
+  }
 }
 
 export function updateMessageDay(guildId: string, message: Message, isDelete: boolean = false): void {
