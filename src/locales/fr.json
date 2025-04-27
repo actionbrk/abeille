@@ -33,6 +33,36 @@
         "noRollingDescription": "Supprimer la moyenne glissante"
       }
     },
+    "activity": {
+      "name": "activity",
+      "description": "Visualisez le nombre de messages postés par jour.",
+      "options": {
+        "channel": {
+          "name": "channel",
+          "description": "Salon dans lequel compter."
+        }
+      },
+      "responses": {
+        "graphTitle": "Nombre de messages par jour",
+        "graphSubTitle": "Sur {serverName}",
+        "graphSubTitleChannel": "Sur {serverName}, dans le salon '{channelName}'",
+        "graphFooter": "Généré le {date} par {botName}",
+        "sinceTheBeginning": "Depuis le début",
+        "sinceTheBeginningDescription": "Afficher la tendance depuis le début du serveur.",
+        "forOneYear": "Tendance sur 1 an",
+        "forOneYearDescription": "Afficher la tendance sur 1 an.",
+        "forTwoYears": "Tendance sur 2 ans",
+        "forTwoYearsDescription": "Afficher la tendance sur 2 ans.",
+        "forThreeYears": "Tendance sur 3 ans",
+        "forThreeYearsDescription": "Afficher la tendance sur 3 ans.",
+        "rolling14Days": "Moyenne sur 14 jours",
+        "rolling14DaysDescription": "Moyenne glissante sur 14 jours",
+        "rolling7Days": "Moyenne sur 7 jours",
+        "rolling7DaysDescription": "Moyenne glissante sur 7 jours",
+        "noRolling": "Pas de moyenne",
+        "noRollingDescription": "Supprimer la moyenne glissante"
+      }
+    },
     "rank": {
       "name": "rank",
       "description": "Consultez le classement des utilisateurs sur ce serveur.",
