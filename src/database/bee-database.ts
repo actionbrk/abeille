@@ -5,6 +5,7 @@ import type { RankResult } from "../models/database/rank-result";
 import type { MessageDay } from "../models/database/message-day";
 import { HashHelper } from "../utils/hash-helper";
 import logger from "../logger";
+import type { ActivityResult } from "../models/database/activity-result";
 
 const dbFolder = "./db";
 
@@ -113,6 +114,49 @@ export function getTrend(
     trend,
     guildFirstMessageDate: guildFirstMessageDate !== null ? new Date(Date.parse(guildFirstMessageDate.date)) : null,
     guildLastMessageDate: guildLastMessageDate !== null ? new Date(Date.parse(guildLastMessageDate.date)) : null,
+  };
+}
+
+export function getActivity(
+  guildId: string,
+  channelId?: string
+): { activity: ActivityResult[]; guildFirstMessageDate: Date | null; guildLastMessageDate: Date | null } {
+  const db = getDatabaseForGuild(guildId);
+
+  let query = `
+    SELECT DATE(m.timestamp) AS date, COUNT(*) AS messages
+    FROM message m
+  `;
+  const params: string[] = [];
+
+  if (channelId) {
+    query += ` WHERE m.channel_id = ?`;
+    params.push(channelId);
+  }
+
+  query += ` GROUP BY DATE(m.timestamp) ORDER BY date ASC`;
+
+  const activityStatement = db.query(query);
+
+  const firstDateQuery = `
+    SELECT DATE(m.timestamp) AS date
+    FROM message m
+  ` + (channelId ? ` WHERE m.channel_id = ?` : ``) + ` ORDER BY date ASC LIMIT 1`;
+
+  const lastDateQuery = `
+    SELECT DATE(m.timestamp) AS date
+    FROM message m
+  ` + (channelId ? ` WHERE m.channel_id = ?` : ``) + ` ORDER BY date DESC LIMIT 1`;
+
+  const firstDate = db.query(firstDateQuery).get(...params) as { date: string } | null;
+  const lastDate = db.query(lastDateQuery).get(...params) as { date: string } | null;
+
+  const activity = activityStatement.all(...params) as ActivityResult[];
+
+  return {
+    activity,
+    guildFirstMessageDate: firstDate !== null ? new Date(Date.parse(firstDate.date)) : null,
+    guildLastMessageDate: lastDate !== null ? new Date(Date.parse(lastDate.date)) : null,
   };
 }
 

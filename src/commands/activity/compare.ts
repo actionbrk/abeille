@@ -256,7 +256,7 @@ async function plotCompare(
           },
           title: {
             display: true,
-            text: (translations.responses?.graphFooter?.[userLocale] ?? "Generate at {date} by {botName}")
+            text: (translations.responses?.graphFooter?.[userLocale] ?? "Generated on {date} by {botName}")
               .replace("{date}", new Date().toLocaleString(userLocale, { dateStyle: "short" }))
               .replace("{botName}", botName),
             color: "white",

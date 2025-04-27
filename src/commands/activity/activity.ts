@@ -1,7 +1,7 @@
-import { ComponentType, InteractionContextType, SlashCommandBuilder, StringSelectMenuBuilder } from "discord.js";
+import { ComponentType, InteractionContextType, SlashCommandBuilder, StringSelectMenuBuilder, TextChannel } from "discord.js";
 import type { Command } from "../../models/command";
 import { LocaleHelper } from "../../utils/locale-helper";
-import { getTrend } from "../../database/bee-database";
+import { getActivity } from "../../database/bee-database";
 import { type ChartConfiguration } from "chart.js";
 import { ChartJSNodeCanvas, type ChartCallback } from "chartjs-node-canvas";
 import logger from "../../logger";
@@ -10,7 +10,7 @@ import { enUS } from "date-fns/locale";
 import pl from "nodejs-polars";
 import sharp from "sharp";
 
-const translations = LocaleHelper.getCommandTranslations("trend");
+const translations = LocaleHelper.getCommandTranslations("activity");
 
 const chartCallback: ChartCallback = (ChartJS) => {
   ChartJS.defaults.responsive = false;
@@ -26,35 +26,36 @@ const chartJSNodeCanvas = new ChartJSNodeCanvas({
   },
 });
 
-const TrendCommand: Command = {
+const ActivityCommand: Command = {
   data: new SlashCommandBuilder()
-    .setName("trend")
+    .setName("activity")
     .setNameLocalizations(translations.localizedNames)
-    .setDescription("Draw the trend of an expression.")
+    .setDescription(translations.localizedDescriptions["en-US"]!)
     .setDescriptionLocalizations(translations.localizedDescriptions)
     .setContexts([InteractionContextType.Guild])
-    .addStringOption((option) =>
+    .addChannelOption((option) =>
       option
-        .setName("term")
-        .setNameLocalizations(translations.options!.term!.localizedNames)
-        .setDescription("The term to draw the trend for.")
-        .setDescriptionLocalizations(translations.options!.term!.localizedDescriptions)
-        .setRequired(true)
-        .setMinLength(3)
-        .setMaxLength(50)
+        .setName("channel")
+        .setNameLocalizations(translations.options!.channel!.localizedNames)
+        .setDescription(translations.options!.channel!.localizedDescriptions["en-US"]!)
+        .setDescriptionLocalizations(translations.options!.channel!.localizedDescriptions)
+        .setRequired(false)
     ),
   async execute(interaction) {
     await interaction.deferReply();
 
     const guildId = interaction.guildId!;
-    const term = interaction.options.getString("term", true);
+    const channel = interaction.options.getChannel("channel");
+    if (!!channel && !(channel instanceof TextChannel)) {
+      return;
+    }
     const userLocale: string = interaction.locale;
     const serverName = interaction.guild?.name ?? "Unknown Server";
     const botName = `${interaction.client.user?.username ?? ""}#${interaction.client.user?.discriminator ?? ""}`;
 
-    const fileBuffer = await plotTrend(guildId, term, userLocale, serverName, botName);
+    const fileBuffer = await plotTrend(guildId, userLocale, serverName, botName, channel);
 
-    const trendPeriodSelect = new StringSelectMenuBuilder().setCustomId("trend-period").setOptions([
+    const trendPeriodSelect = new StringSelectMenuBuilder().setCustomId("activity-period").setOptions([
       {
         label: translations.responses?.sinceTheBeginning?.[userLocale] ?? "Since the beginning",
         value: "0",
@@ -80,7 +81,7 @@ const TrendCommand: Command = {
       },
     ]);
 
-    const rollingMeanSelect = new StringSelectMenuBuilder().setCustomId("trend-rolling").setOptions([
+    const rollingMeanSelect = new StringSelectMenuBuilder().setCustomId("activity-rolling").setOptions([
       {
         label: translations.responses?.rolling14Days?.[userLocale] ?? "Average over 14 days",
         value: "14",
@@ -130,9 +131,9 @@ const TrendCommand: Command = {
     let rolling = 14;
 
     collector.on("collect", async (i) => {
-      if (i.customId === "trend-period") {
+      if (i.customId === "activity-period") {
         period = parseInt(i.values[0] ?? "0");
-      } else if (i.customId === "trend-rolling") {
+      } else if (i.customId === "activity-rolling") {
         rolling = parseInt(i.values[0] ?? "14");
       }
       logger.debug("Period: %d, Rolling: %d", period, rolling);
@@ -154,7 +155,7 @@ const TrendCommand: Command = {
 
       const deferUpdatePromise = i.update({ content: "", components: components });
 
-      const newFileBuffer = await plotTrend(guildId, term, userLocale, serverName, botName, rolling, period);
+      const newFileBuffer = await plotTrend(guildId, userLocale, serverName, botName, channel, rolling, period);
       await deferUpdatePromise;
       await i.editReply({
         files: [
@@ -178,25 +179,25 @@ const TrendCommand: Command = {
 
 async function plotTrend(
   guildId: string,
-  term: string,
   userLocale: string,
   serverName: string,
   botName: string,
+  channel: TextChannel | null,
   rolling = 14,
   dateMode = 0
 ): Promise<Buffer<ArrayBufferLike>> {
-  const trendResults = getTrend(guildId, term);
-  logger.debug("Trend results: %o", trendResults);
+  const activityResults = getActivity(guildId, channel?.id);
+  logger.debug("Activity results: %o", activityResults);
 
-  const endDate = trendResults.guildLastMessageDate ?? new Date();
+  const endDate = activityResults.guildLastMessageDate ?? new Date();
   const startDate =
     dateMode === 0
-      ? trendResults.guildFirstMessageDate ?? new Date()
+      ? activityResults.guildFirstMessageDate ?? new Date()
       : endDate.getTime() - dateMode * 365 * 24 * 60 * 60 * 1000;
   const trends: { x: string; y: number }[] = [];
 
   let date = new Date(startDate);
-  const trendMap = new Map(trendResults.trend.map((t) => [t.date, t.messages ?? 0]));
+  const trendMap = new Map(activityResults.activity.map((t) => [t.date, t.messages ?? 0]));
   while (date <= endDate) {
     const dateAsStr = format(date, "yyyy-MM-dd");
     const value = trendMap.get(dateAsStr) || 0;
@@ -315,7 +316,7 @@ async function plotTrend(
           enabled: true,
         },
         title: {
-          text: (translations.responses?.graphTitle?.[userLocale] ?? "Trends for '{term}'").replace("{term}", term),
+          text: (translations.responses?.graphTitle?.[userLocale] ?? "Message count per day"),
           font: {
             size: 18,
             weight: "bold",
@@ -325,10 +326,12 @@ async function plotTrend(
           color: "white",
         },
         subtitle: {
-          text: (translations.responses?.graphSubTitle?.[userLocale] ?? "On {serverName}").replace(
-            "{serverName}",
-            serverName
-          ),
+          text: channel === null ?
+            (translations.responses?.graphSubTitle?.[userLocale] ?? "On {serverName}")
+              .replace("{serverName}", serverName)
+            : (translations.responses?.graphSubTitleChannel?.[userLocale] ?? "On {serverName}, in channel: '{channelName}'")
+              .replace("{serverName}", serverName)
+              .replace("{channelName}", channel.name),
           display: true,
           align: "start",
           padding: { bottom: 25 },
@@ -348,4 +351,4 @@ async function plotTrend(
   return sharp(buffer).toFormat("webp", { quality: 80 }).toBuffer();
 }
 
-export default TrendCommand;
+export default ActivityCommand;
