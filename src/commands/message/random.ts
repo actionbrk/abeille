@@ -114,7 +114,7 @@ async function showRandomMessage(interaction: ChatInputCommandInteraction, chann
         name: discordMessage.author.tag,
         iconURL: discordMessage.author.displayAvatarURL(),
       })
-      .setDescription(discordMessage.content)
+      .setDescription(discordMessage.content || null)
       .setTimestamp(discordMessage.createdAt)
       .setFooter({ text: `#${channel.name}` })
       .setColor(0xffff00);
