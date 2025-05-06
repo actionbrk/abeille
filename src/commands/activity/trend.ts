@@ -26,6 +26,9 @@ const chartJSNodeCanvas = new ChartJSNodeCanvas({
   },
 });
 
+const TREND_PERIOD_ID = "trend-period";
+const TREND_ROLLING_ID = "trend-rolling";
+
 const TrendCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("trend")
@@ -54,7 +57,7 @@ const TrendCommand: Command = {
 
     const fileBuffer = await plotTrend(guildId, term, userLocale, serverName, botName);
 
-    const trendPeriodSelect = new StringSelectMenuBuilder().setCustomId("trend-period").setOptions([
+    const trendPeriodSelect = new StringSelectMenuBuilder().setCustomId(TREND_PERIOD_ID).setOptions([
       {
         label: translations.responses?.sinceTheBeginning?.[userLocale] ?? "Since the beginning",
         value: "0",
@@ -80,7 +83,7 @@ const TrendCommand: Command = {
       },
     ]);
 
-    const rollingMeanSelect = new StringSelectMenuBuilder().setCustomId("trend-rolling").setOptions([
+    const rollingMeanSelect = new StringSelectMenuBuilder().setCustomId(TREND_ROLLING_ID).setOptions([
       {
         label: translations.responses?.rolling14Days?.[userLocale] ?? "Average over 14 days",
         value: "14",
@@ -130,26 +133,29 @@ const TrendCommand: Command = {
     let rolling = 14;
 
     collector.on("collect", async (i) => {
-      if (i.customId === "trend-period") {
+      if (i.customId === TREND_PERIOD_ID) {
         period = parseInt(i.values[0] ?? "0");
-      } else if (i.customId === "trend-rolling") {
+      } else if (i.customId === TREND_ROLLING_ID) {
         rolling = parseInt(i.values[0] ?? "14");
       }
       logger.debug("Period: %d, Rolling: %d", period, rolling);
 
-      const selectedPeriodOption = trendPeriodSelect.options.find((option) => option.data.value === i.values[0]);
-      const selectedRollingOption = rollingMeanSelect.options.find((option) => option.data.value === i.values[0]);
-      if (selectedPeriodOption) {
-        trendPeriodSelect.options.forEach((option) => {
-          option.setDefault(false);
-        });
-        selectedPeriodOption.setDefault(true);
-      }
-      if (selectedRollingOption) {
-        rollingMeanSelect.options.forEach((option) => {
-          option.setDefault(false);
-        });
-        selectedRollingOption.setDefault(true);
+      if (i.customId === TREND_PERIOD_ID) {
+        const selectedPeriodOption = trendPeriodSelect.options.find((option) => option.data.value === i.values[0]);
+        if (selectedPeriodOption) {
+          trendPeriodSelect.options.forEach((option) => {
+            option.setDefault(false);
+          });
+          selectedPeriodOption.setDefault(true);
+        }
+      } else if (i.customId === TREND_ROLLING_ID) {
+        const selectedRollingOption = rollingMeanSelect.options.find((option) => option.data.value === i.values[0]);
+        if (selectedRollingOption) {
+          rollingMeanSelect.options.forEach((option) => {
+            option.setDefault(false);
+          });
+          selectedRollingOption.setDefault(true);
+        }
       }
 
       const deferUpdatePromise = i.update({ content: "", components: components });
