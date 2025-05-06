@@ -38,7 +38,7 @@
       "description": "Visualisez le nombre de messages postés par jour.",
       "options": {
         "channel": {
-          "name": "channel",
+          "name": "salon",
           "description": "Salon dans lequel compter."
         }
       },
