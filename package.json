@@ -13,25 +13,25 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.24.0",
+    "@eslint/js": "^9.32.0",
     "@types/bun": "latest",
-    "eslint": "^9.24.0",
-    "globals": "^16.0.0",
-    "typescript-eslint": "^8.29.1"
+    "eslint": "^9.32.0",
+    "globals": "^16.3.0",
+    "typescript-eslint": "^8.38.0"
   },
   "peerDependencies": {
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@zip.js/zip.js": "^2.7.60",
-    "chart.js": "^4.4.8",
+    "@zip.js/zip.js": "^2.7.71",
+    "chart.js": "^4.5.0",
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-node-canvas": "^5.0.0",
-    "csv-stringify": "^6.5.2",
+    "csv-stringify": "^6.6.0",
     "date-fns": "^4.1.0",
-    "discord.js": "^14.18.0",
+    "discord.js": "^14.21.0",
     "nodejs-polars": "^0.18.0",
-    "sharp": "^0.34.1",
+    "sharp": "^0.34.3",
     "winston": "^3.17.0"
   }
 }
