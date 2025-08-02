@@ -108,7 +108,6 @@ export async function saveMessagesForGuild(
     try {
       let lastMessageId: string | undefined;
       let messagesFound = true;
-      const channelMessages = [];
 
       if (channel.isThread() && !channel.joined) {
         await channel.join();
@@ -155,10 +154,11 @@ export async function saveMessagesForGuild(
           }
         }
 
-        channelMessages.push(...validMessages);
-
-        // Update progress
-        totalSaved += validMessages.length;
+        // Save messages to the database
+        if (validMessages.length > 0) {
+          await saveChannelMessages(guildId, validMessages);
+          totalSaved += validMessages.length;
+        }
 
         if (since) {
           lastMessageId = messages.first()?.id;
@@ -167,21 +167,20 @@ export async function saveMessagesForGuild(
         }
       }
 
-      if (channelMessages.length > 0) {
-        if (progressMessage && interaction) {
-          await progressMessage.edit({
-            content: (
-              translations.responses?.progress?.[interaction.locale] ??
-              "Saved {saved} messages from {channels} channels..."
-            )
-              .replace("{saved}", totalSaved.toString())
-              .replace("{channels}", totalChannels.toString()),
-          });
-        }
-        await saveChannelMessages(guildId, channelMessages);
-        totalChannels++;
+      totalChannels++;
+      logger.info("Finished saving messages from channel %s", channel.name);
 
-        logger.info("Saved %d messages from channel %s", channelMessages.length, channel.name);
+      // Update progress
+      if (progressMessage && interaction) {
+        await progressMessage.edit({
+          content: (
+            translations.responses?.progress?.[interaction.locale] ??
+            "Saved {saved} messages from {channels}/{textChannels} channels..."
+          )
+            .replace("{saved}", totalSaved.toString())
+            .replace("{channels}", totalChannels.toString())
+            .replace("{textChannels}", textChannels.size.toString()),
+        });
       }
     } catch (error) {
       logger.warn("Error saving channel %s: %o", channel.name, error);
