@@ -272,10 +272,6 @@ async function plotTrend(
           beginAtZero: true,
           min: 0,
           ticks: {
-            callback: function (value) {
-              const intValue = parseFloat(value.toString());
-              return (100 * intValue).toFixed(2) + "%";
-            },
             color: "white",
             autoSkip: true,
           },
