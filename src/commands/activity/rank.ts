@@ -135,14 +135,14 @@ async function computeRankForExpression(
         const userCount = result.count;
         const userPercentage = ((userCount / totalCount) * 100).toFixed(2);
 
-        const rankIcon = userRank === 1 ? "🥇" : userRank === 2 ? "🥈" : userRank === 3 ? "🥉" : ` ${userRank}.`;
+        const rankIcon = userRank === 1 ? "- 1." : userRank === 2 ? "- 🥈" : userRank === 3 ? "- 🥉" : `- ${userRank}.`;
         return `${rankIcon} ${userName} (${userPercentage}%)`;
       })
       .join("\n");
 
     const embedTitle = (
       translations.responses?.rankFound?.[userLocale] ??
-      "`{number}` members have already used the expression *{expression}*"
+      "`{number}` members have already used the expression *{expression}*."
     )
       .replace("{number}", rankResult.length.toString())
       .replace("{expression}", expression);

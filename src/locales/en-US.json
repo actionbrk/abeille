@@ -73,7 +73,7 @@
         }
       },
       "responses": {
-        "rankFound": "`{number}` members have already used the expression *{expression}*",
+        "rankFound": "`{number}` members have already used the expression *{expression}*.",
         "rankNone": "The expression *{expression}* has never been used on this server.",
         "neverUseExpression": "Have never used this expression",
         "unregisteredUser": "Unregistered user",
