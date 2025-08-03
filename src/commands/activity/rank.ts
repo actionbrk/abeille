@@ -135,7 +135,7 @@ async function computeRankForExpression(
         const userCount = result.count;
         const userPercentage = ((userCount / totalCount) * 100).toFixed(2);
 
-        const rankIcon = userRank === 1 ? "- 1." : userRank === 2 ? "- 🥈" : userRank === 3 ? "- 🥉" : `- ${userRank}.`;
+        const rankIcon = userRank === 1 ? "- 🥇" : userRank === 2 ? "- 🥈" : userRank === 3 ? "- 🥉" : `- ${userRank}.`;
         return `${rankIcon} ${userName} (${userPercentage}%)`;
       })
       .join("\n");
