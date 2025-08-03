@@ -167,14 +167,22 @@ export function getRank(guildId: string, expression: string): RankResult[] {
       SELECT rowid
       FROM messageindex
       WHERE messageindex MATCH ?
+    ),
+    aggregated AS (
+      SELECT
+        IF (i.real_author_id IS NULL, m.author_id, CAST(i.real_author_id AS TEXT)) AS author_id,
+        COUNT(*) AS count
+      FROM matched
+      JOIN message AS m ON m.rowid = matched.rowid
+      LEFT JOIN identity i ON m.author_id = i.author_id
+      GROUP BY IF(i.real_author_id IS NULL, m.author_id, CAST(i.real_author_id AS TEXT))
     )
-    SELECT IF (i.real_author_id IS NULL, m.author_id, CAST(i.real_author_id AS TEXT)) as author_id,
-           COUNT(*) AS count
-    FROM matched
-    JOIN message AS m ON m.rowid = matched.rowid
-    LEFT JOIN "identity" i ON m.author_id = i.author_id
-    GROUP BY m.author_id
-    ORDER BY count DESC;
+    SELECT
+      RANK() OVER (ORDER BY count DESC) AS rank,
+      author_id,
+      count
+    FROM aggregated
+    ORDER BY rank;
   `);
 
   return statement.all(`"${expression}"`) as RankResult[];

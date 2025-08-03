@@ -41,7 +41,7 @@ const RankCommand: Command = {
 
     const authorizedUserIds = new Set<string>([interaction.user.id]);
 
-    const embed = await computeRankForExpressionAsync(guildId, expression, userLocale, authorizedUserIds);
+    const embed = await computeRankForExpression(guildId, expression, userLocale, authorizedUserIds);
 
     const displayMyRankTranslation = translations.responses?.displayMyRank?.[userLocale] ?? "Display my rank";
     const displayMyRankButton = new ButtonBuilder()
@@ -74,7 +74,7 @@ const RankCommand: Command = {
 
       const deferUpdatePromise = i.update({ content: "" });
 
-      const editedEmbed = await computeRankForExpressionAsync(guildId, expression, userLocale, authorizedUserIds);
+      const editedEmbed = await computeRankForExpression(guildId, expression, userLocale, authorizedUserIds);
       await deferUpdatePromise;
       await i.editReply({
         embeds: [editedEmbed],
@@ -92,7 +92,7 @@ const RankCommand: Command = {
 
 export default RankCommand;
 
-async function computeRankForExpressionAsync(
+async function computeRankForExpression(
   guildId: string,
   expression: string,
   userLocale: string,
@@ -114,9 +114,12 @@ async function computeRankForExpressionAsync(
       hashMapOfUserId.set(userIdHash, userId);
     });
 
+    // Show top 10 AND already displayed users
     let embedDescription = rankResult
-      .map((result, index) => {
+      .filter((result) => result.rank <= 10 || displayedUsersIds.has(result.author_id))
+      .map((result) => {
         let userName;
+        // 128 means hashed user ID
         if (result.author_id.length === 128) {
           const realUserId = hashMapOfUserId.get(result.author_id);
           if (realUserId) {
@@ -128,7 +131,7 @@ async function computeRankForExpressionAsync(
           userName = userMention(result.author_id);
         }
 
-        const userRank = index + 1;
+        const userRank = result.rank;
         const userCount = result.count;
         const userPercentage = ((userCount / totalCount) * 100).toFixed(2);
 
