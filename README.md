@@ -4,36 +4,32 @@
 
 > A powerful Discord bot for collecting and analyzing message statistics and insights for your guilds.
 
-## Data Flow
-
-```mermaid
-graph LR
-    A[Discord Messages] -->|Collected| B[Abeille Bot]
-    B -->|Pseudonymized| C[SQLite Database]
-    C -->|Analyzed| D[Statistics & Insights]
-    D -->|Presented| E[Discord Commands]
-    B -->|Handles| E
-```
-
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Dependencies](#dependencies)
-- [Run Your Own Abeille](#run-your-own-abeille)
-  - [Setting Up](#setting-up)
-  - [Environment Variables](#environment-variables)
-  - [Run](#run)
-- [Development](#development)
-- [Commands](#commands)
-- [Contributing](#contributing)
-- [Documentation](#documentation)
+- [Abeille 🐝](#abeille-)
+  - [📋 Table of Contents](#-table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Dependencies](#dependencies)
+  - [Run Your Own Abeille](#run-your-own-abeille)
+    - [Setting Up](#setting-up)
+    - [Environment Variables](#environment-variables)
+    - [Run](#run)
+  - [Development](#development)
+  - [Commands](#commands)
+    - [Activity Commands](#activity-commands)
+    - [Message Commands](#message-commands)
+    - [Admin Commands](#admin-commands)
+    - [Privacy Commands](#privacy-commands)
+    - [Developer Commands (_may be removed in the future_)](#developer-commands-may-be-removed-in-the-future)
+    - [Utility Commands](#utility-commands)
+  - [Contributing](#contributing)
+  - [Documentation](#documentation)
+  - [Data Flow](#data-flow)
 
 ## Overview
 
 Abeille is a Discord bot providing statistics and insights for guilds. It maintains a database (one for each guild) with the messages from each connected guild, in order to perform efficient and various search operations (since Discord does not provide any API to perform search operations).
-
-> **Note**: For now, there is no public Abeille bot. You should run your own Abeille bot instance by following the steps below.
 
 ## Features
 
@@ -62,7 +58,7 @@ Abeille is built using the following open source libraries:
 
 ## Run Your Own Abeille
 
-Abeille is not (yet) a public Discord bot. You can run your own instance of Abeille by following these steps:
+You can run your own instance of Abeille by following these steps:
 
 ### Setting Up
 
@@ -163,4 +159,13 @@ For more detailed information about Abeille, please see the following documentat
 - [Architecture Overview](docs/ARCHITECTURE.md) - Learn about Abeille's internal structure
 - [Security Best Practices](docs/SECURITY.md) - Important security recommendations
 
-For developers interested in the database structure, see the [SaveScenarios.drawio](docs/SaveScenarios.drawio) diagram.
+## Data Flow
+
+```mermaid
+graph LR
+    A[Discord Messages] -->|Collected| B[Abeille Bot]
+    B -->|Pseudonymized| C[SQLite Database]
+    C -->|Analyzed| D[Statistics & Insights]
+    D -->|Presented| E[Discord Commands]
+    B -->|Handles| E
+```
