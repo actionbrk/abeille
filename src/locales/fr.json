@@ -73,12 +73,12 @@
         }
       },
       "responses": {
-        "rankFound": "`{number}` membres ont déjà utilisé l'expression *{expression}*.",
+        "rankFound": "`{number}` membres ont déjà utilisé l'expression *{expression}*",
         "rankNone": "L'expression *{expression}* n'a jamais été utilisée sur ce serveur.",
         "neverUseExpression": "N'ont jamais utilisé cette expression",
-        "unregisteredUser": "Utilisateur non enregistré",
+        "unregisteredUser": "Utilisateur anonyme",
         "displayMyRank": "Afficher mon rang",
-        "totalExpressionUses": "L'expression {expression} a été utilisée {count} fois"
+        "totalExpressionUses": "L'expression {expression} a été utilisée {count} fois."
       }
     },
     "compare": {
