@@ -16,6 +16,8 @@
     - [Environment Variables](#environment-variables)
     - [Run](#run)
   - [Development](#development)
+    - [Getting started](#getting-started)
+    - [Updating project](#updating-project)
   - [Commands](#commands)
     - [Activity Commands](#activity-commands)
     - [Message Commands](#message-commands)
@@ -97,11 +99,25 @@ docker logs abeille
 
 ## Development
 
+### Getting started
+
 1. Clone project
 2. Install bun from [Bun website](https://bun.sh/)
 3. Copy and rename `.env.template` to `.env.local` and complete variables (see [Environment Variables](#environment-variables) configuration)
 4. Run `bun install` to install dependencies
 5. Run `bun dev` to start your bot
+
+### Updating project
+
+```bash
+bun update
+```
+
+Or
+
+```bash
+npx npm-check-updates --packageManager=bun
+```
 
 ## Commands
 
