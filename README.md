@@ -105,7 +105,7 @@ docker logs abeille
 2. Install bun from [Bun website](https://bun.sh/)
 3. Copy and rename `.env.template` to `.env.local` and complete variables (see [Environment Variables](#environment-variables) configuration)
 4. Run `bun install` to install dependencies
-5. Run `bun dev` to start your bot
+5. Run `bun dev` to start your bot (or `docker compose up --build`)
 
 ### Updating project
 
