@@ -11,6 +11,10 @@
         "term": {
           "name": "term",
           "description": "The word or expression to search for."
+        },
+        "private": {
+          "name": "private",
+          "description": "Whether to display the trend privately."
         }
       },
       "responses": {

@@ -1,4 +1,4 @@
-import { ComponentType, InteractionContextType, SlashCommandBuilder, StringSelectMenuBuilder } from "discord.js";
+import { ComponentType, InteractionContextType, MessageFlags, SlashCommandBuilder, StringSelectMenuBuilder } from "discord.js";
 import type { Command } from "../../models/command";
 import { LocaleHelper } from "../../utils/locale-helper";
 import { getTrend } from "../../database/bee-database";
@@ -45,9 +45,17 @@ const TrendCommand: Command = {
         .setRequired(true)
         .setMinLength(3)
         .setMaxLength(50)
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("private")
+        .setNameLocalizations(translations.options!.private!.localizedNames)
+        .setDescription("Whether to display the trend privately.")
+        .setDescriptionLocalizations(translations.options!.private!.localizedDescriptions)
+        .setRequired(false)
     ),
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply({flags: interaction.options.getBoolean("private") ? MessageFlags.Ephemeral : undefined});
 
     const guildId = interaction.guildId!;
     const term = interaction.options.getString("term", true);
