@@ -1,16 +1,19 @@
 import {
   ButtonBuilder,
   ButtonStyle,
+  Colors,
   ComponentType,
   EmbedBuilder,
   InteractionContextType,
   SlashCommandBuilder,
+  time,
+  TimestampStyles,
   userMention,
 } from "discord.js";
 import type { Command } from "../../models/command";
 import { LocaleHelper } from "../../utils/locale-helper";
 import logger from "../../logger";
-import { getRank } from "../../database/bee-database";
+import { getRank, getRankFirstUsed } from "../../database/bee-database";
 import { HashHelper } from "../../utils/hash-helper";
 
 const translations = LocaleHelper.getCommandTranslations("rank");
@@ -105,71 +108,76 @@ async function computeRankForExpression(
       translations.responses?.rankNone?.[userLocale] ??
       "The expression *{expression}* has never been used on this server.";
     return new EmbedBuilder().setTitle(embedTitle.replace("{expression}", expression)).setColor(0xff0000);
-  } else {
-    const totalCount = rankResult.reduce((acc, result) => acc + result.count, 0);
-
-    const hashMapOfUserId = new Map<string, string>();
-    displayedUsersIds.forEach((userId) => {
-      const userIdHash = HashHelper.computeHash(userId);
-      hashMapOfUserId.set(userIdHash, userId);
-    });
-
-    // Show top 10 AND already displayed users
-    let embedDescription = rankResult
-      .filter((result) => result.rank <= 10 || displayedUsersIds.has(result.author_id))
-      .map((result) => {
-        let userName;
-        // 128 means hashed user ID
-        if (result.author_id.length === 128) {
-          const realUserId = hashMapOfUserId.get(result.author_id);
-          if (realUserId) {
-            userName = userMention(realUserId);
-          } else {
-            userName = translations.responses?.unregisteredUser?.[userLocale] ?? "Unregistered user";
-          }
-        } else {
-          userName = userMention(result.author_id);
-        }
-
-        const userRank = result.rank;
-        const userCount = result.count;
-        const userPercentage = ((userCount / totalCount) * 100).toFixed(2);
-
-        const rankIcon = userRank === 1 ? "- 🥇" : userRank === 2 ? "- 🥈" : userRank === 3 ? "- 🥉" : `- ${userRank}.`;
-        return `${rankIcon} ${userName} (${userPercentage}%)`;
-      })
-      .join("\n");
-
-    const embedTitle = (
-      translations.responses?.rankFound?.[userLocale] ??
-      "`{number}` members have already used the expression *{expression}*."
-    )
-      .replace("{number}", rankResult.length.toString())
-      .replace("{expression}", expression);
-
-    // Displayed users who never used the expression
-    const userWhoNeverUsedIt = Array.from(displayedUsersIds).filter((userId) => {
-      const userIdHash = HashHelper.computeHash(userId);
-      return !rankResult.some((result) => result.author_id === userIdHash || result.author_id === userId);
-    });
-
-    if (userWhoNeverUsedIt.length > 0) {
-      const neverUsedTranslation =
-        translations.responses?.neverUseExpression?.[userLocale] ?? "Have never used this expression";
-      const neverUsedList = userWhoNeverUsedIt.map((userId) => userMention(userId)).join("\n");
-      embedDescription += `\n\n**${neverUsedTranslation}**\n${neverUsedList}`;
-    }
-
-    const embedFooterText =
-      translations.responses?.totalExpressionUses?.[userLocale] ??
-      "Expression {expression} has been used {count} times";
-
-    return new EmbedBuilder()
-      .setTitle(embedTitle)
-      .setDescription(embedDescription)
-      .setFooter({
-        text: embedFooterText.replace("{expression}", expression).replace("{count}", totalCount.toString()),
-      })
-      .setColor(0xffff00);
   }
+
+  const totalCount = rankResult.reduce((acc, result) => acc + result.count, 0);
+
+  const displayedUsersHashIds = new Map<string, string>();
+  displayedUsersIds.forEach((userId) => displayedUsersHashIds.set(HashHelper.computeHash(userId), userId));
+
+  // Show top 10 AND already displayed users
+  let topUsers = rankResult
+    .filter((result) => result.rank <= 10 || displayedUsersIds.has(result.author_id))
+    .map((result) => {
+      const userMention = getUserMentionFromAuthorId(result.author_id, userLocale, displayedUsersHashIds);
+      const userRank = result.rank;
+      const userCount = result.count;
+      const userPercentage = ((userCount / totalCount) * 100).toFixed(2);
+
+      const rankIcon = userRank === 1 ? "- 🥇" : userRank === 2 ? "- 🥈" : userRank === 3 ? "- 🥉" : `- ${userRank}.`;
+      return `${rankIcon} ${userMention} (${userPercentage}%)`;
+    })
+    .join("\n");
+
+  const embedTitle = (
+    translations.responses?.rankFound?.[userLocale] ??
+    "`{number}` members have already used the expression *{expression}*."
+  )
+    .replace("{number}", rankResult.length.toString())
+    .replace("{expression}", expression);
+
+  // Displayed users who never used the expression
+  const userWhoNeverUsedIt = Array.from(displayedUsersIds).filter((userId) => {
+    const userIdHash = HashHelper.computeHash(userId);
+    return !rankResult.some((result) => result.author_id === userIdHash || result.author_id === userId);
+  });
+
+  if (userWhoNeverUsedIt.length > 0) {
+    const neverUsedTranslation =
+      translations.responses?.neverUseExpression?.[userLocale] ?? "Have never used this expression";
+    const neverUsedList = userWhoNeverUsedIt.map((userId) => userMention(userId)).join("\n");
+    topUsers += `\n\n**${neverUsedTranslation}**\n${neverUsedList}`;
+  }
+
+  const rankFirstUsedResult = getRankFirstUsed(guildId, expression);
+  const firstUsedUserMention = getUserMentionFromAuthorId(rankFirstUsedResult.author_id, userLocale, displayedUsersHashIds);
+  const totalAndFirstUsedText =
+    (translations.responses?.totalExpressionUses?.[userLocale] ?? "Expression *{expression}* has been used `{count}` times, first time used by {author} {first_used_at}.")
+      .replace("{expression}", expression)
+      .replace("{count}", totalCount.toString())
+      .replace("{author}", firstUsedUserMention)
+      .replace("{first_used_at}", time(new Date(rankFirstUsedResult.first_used_at), TimestampStyles.RelativeTime));
+
+  return new EmbedBuilder()
+    .setTitle(embedTitle)
+    .setDescription(totalAndFirstUsedText)
+    .setFields([
+      {
+        name: translations.responses?.rankByUses?.[userLocale] ?? "Classement en nombre d'utilisations",
+        value: topUsers,
+      },
+    ])
+    .setColor(Colors.Yellow);
+}
+
+function getUserMentionFromAuthorId(authorId: string, userLocale: string, displayedUsersHashIds: Map<string, string>): string {
+  // 128 means hashed user ID
+  if (authorId.length === 128) {
+    const realUserId = displayedUsersHashIds.get(authorId);
+    if (realUserId) {
+      return userMention(realUserId);
+    }
+    return translations.responses?.unregisteredUser?.[userLocale] ?? "Unregistered user";
+  }
+  return userMention(authorId);
 }

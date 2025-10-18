@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import type { Message } from "../models/database/message";
 import type { TrendResult } from "../models/database/trend-result";
-import type { RankResult } from "../models/database/rank-result";
+import type { RankFirstUsedResult, RankResult } from "../models/database/rank-result";
 import type { MessageDay } from "../models/database/message-day";
 import { HashHelper } from "../utils/hash-helper";
 import logger from "../logger";
@@ -187,6 +187,28 @@ export function getRank(guildId: string, expression: string): RankResult[] {
 
   return statement.all(`"${expression}"`) as RankResult[];
 }
+
+export function getRankFirstUsed(guildId: string, expression: string): RankFirstUsedResult {
+  const db = getDatabaseForGuild(guildId);
+  const statement = db.query(`
+    WITH matched AS (
+      SELECT rowid
+      FROM messageindex
+      WHERE messageindex MATCH ?
+    )
+    SELECT
+      IF (i.real_author_id IS NULL, m.author_id, CAST(i.real_author_id AS TEXT)) AS author_id,
+      m.timestamp AS first_used_at
+    FROM matched
+    JOIN message AS m ON m.rowid = matched.rowid
+    LEFT JOIN identity i ON m.author_id = i.author_id
+    ORDER BY m.timestamp ASC
+    LIMIT 1;
+  `);
+
+  return statement.get(`"${expression}"`) as RankFirstUsedResult;
+}
+
 
 export interface RandomMessageOptions {
   channelId?: string;

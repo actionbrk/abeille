@@ -78,7 +78,9 @@
         "neverUseExpression": "N'ont jamais utilisé cette expression",
         "unregisteredUser": "Utilisateur anonyme",
         "displayMyRank": "Afficher mon rang",
-        "totalExpressionUses": "L'expression {expression} a été utilisée {count} fois."
+        "totalExpressionUses": "L'expression *{expression}* a été utilisée `{count}` fois, la première fois par {author} {first_used_at}.",
+        "rankByUses": "Classement en nombre d'utilisations",
+        "lastUsages": "Dernières utilisations"
       }
     },
     "compare": {
